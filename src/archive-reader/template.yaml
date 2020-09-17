@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Import archived logs from S3 bucket to Coralogix.
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: Coralogix-Archive-Reader
+    Description: Import archived logs from S3 bucket to Coralogix.
+    Author: Coralogix
+    SpdxLicenseId: Apache-2.0
+    LicenseUrl: LICENSE
+    ReadmeUrl: README.md
+    Labels:
+      - coralogix
+      - logs
+      - s3
+      - archive
+      - import
+      - restore
+    HomePageUrl: https://coralogix.com
+    SemanticVersion: 1.0.0
+    SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
+Parameters:
+  CoralogixRegion:
+    Type: String
+    Description: The Coralogix location region
+    AllowedValues:
+      - Europe
+      - India
+    Default: Europe
+  PrivateKey:
+    Type: String
+    Description: The Coralogix private key which is used to validate your authenticity
+    AllowedPattern: '[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}'
+    ConstraintDescription: The PrivateKey should be valid UUID string
+    MinLength: 36
+    MaxLength: 36
+    NoEcho: true
+  FunctionMemorySize:
+    Type: Number
+    Description: Lambda function memory limit
+    MinValue: 128
+    MaxValue: 3008
+    Default: 2048
+  FunctionTimeout:
+    Type: Number
+    Description: Lambda function timeout limit
+    MinValue: 30
+    MaxValue: 900
+    Default: 600
+Mappings:
+  CoralogixRegionMap:
+    Europe:
+      LogUrl: https://api.coralogix.com/api/v1/logs
+    India:
+      LogUrl: https://api.app.coralogix.in/api/v1/logs
+Resources:
+  LambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: coralogix-archive-reader
+      Description: Import archived logs from S3 bucket to Coralogix.
+      CodeUri: .
+      Handler: index.handler
+      Runtime: nodejs10.x
+      MemorySize:
+        Ref: FunctionMemorySize
+      Timeout:
+        Ref: FunctionTimeout
+      Environment:
+        Variables:
+          CORALOGIX_URL:
+            Fn::FindInMap:
+              - CoralogixRegionMap
+              - Ref: CoralogixRegion
+              - LogUrl
+          private_key:
+            Ref: PrivateKey
+      Policies:
+        - S3ReadPolicy:
+            BucketName:
+              Fn::Sub: "coralogix-import-${AWS::AccountId}-${AWS::Region}"
+      Events:
+        S3Event:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: LambdaBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                - Name: suffix
+                  Value: .csv.gz
+
+  LambdaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: "coralogix-import-${AWS::AccountId}-${AWS::Region}"
+
+Outputs:
+  LambdaBucketName:
+    Description: Information about the value
+    Value:
+      Ref: LambdaBucket
+    Export:
+      Name: CORALOGIX-IMPORT-BUCKET
