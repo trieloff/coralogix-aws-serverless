@@ -14,83 +14,67 @@
 
 // Import required libraries
 const https = require("https");
+const zlib = require("zlib");
 const assert = require("assert");
 
 // Check Lambda function parameters
-assert(process.env.private_key, "No private key!")
-const appName = process.env.app_name ? process.env.app_name : "NO_APPLICATION";
-const subName = process.env.sub_name ? process.env.sub_name : "NO_SUBSYSTEM";
-const newlinePattern = (process.env.newline_pattern) ? RegExp(process.env.newline_pattern) : /(?:\r\n|\r|\n)/g;
-const coralogixUrl = (process.env.CORALOGIX_URL) ? process.env.CORALOGIX_URL : "api.coralogix.com";
-
-/**
- * Decode payload to simple string
- * @param {string} streamEventRecord - Kinesis data payload
- * @returns {string} Decoded payload
- */
-function extractEvent(streamEventRecord) {
-    return new Buffer(streamEventRecord.kinesis.data, "base64").toString("ascii");
-}
-
-/**
- * @description Split payload to records
- * @param {string} eventsData - Kinesis data payload
- * @returns {Array} Log records
- */
-function parseEvents(eventsData) {
-    return eventsData.split(newlinePattern).map((eventRecord) => {
-        return {
-            "timestamp": Date.now(),
-            "severity": getSeverityLevel(eventRecord),
-            "text": eventRecord
-        };
-    });
-}
+assert(process.env.private_key, "No private key!");
+const appName = process.env.app_name || "NO_APPLICATION";
+const subName = process.env.sub_name || "NO_SUBSYSTEM";
+const newlinePattern = process.env.newline_pattern ? RegExp(process.env.newline_pattern) : /(?:\r\n|\r|\n)/g;
+const coralogixUrl = process.env.CORALOGIX_URL || "api.coralogix.com";
 
 /**
  * @description Send logs to Coralogix via API
- * @param {object} parsedEvents - Log message
+ * @param {Buffer} logs - GZip compressed logs messages payload
+ * @param {function} callback - Function callback
+ * @param {int} retryNumber - Retry attempt
+ * @param {int} retryLimit - Retry attempts limit
  */
-function postEventsToCoralogix(parsedEvents) {
+function postToCoralogix(logs, callback, retryNumber = 0, retryLimit = 3) {
+    let responseBody = "";
+
     try {
-        let retries = 3;
-        let timeoutMs = 10000;
-        let retryNum = 0;
-        let sendRequest = function sendRequest() {
-            let req = https.request({
-                hostname: coralogixUrl,
-                port: 443,
-                path: "/api/v1/logs",
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            }, function (res) {
-                console.log("Status: %d", res.statusCode);
-                console.log("Headers: %s", JSON.stringify(res.headers));
-                res.setEncoding("utf8");
-                res.on("data", function (body) {
-                    console.log("Body: %s", body);
-                });
+        const request = https.request({
+            hostname: coralogixUrl,
+            port: 443,
+            path: "/api/v1/logs",
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Content-Encoding": "gzip",
+                "Content-Length": logs.length
+            },
+            timeout: 10000
+        });
+
+        request.on("response", (response) => {
+            console.log("Status: %d", response.statusCode);
+            console.log("Headers: %s", JSON.stringify(response.headers));
+            response.setEncoding("utf8");
+            response.on("data", (chunk) => responseBody += chunk);
+            response.on("end", () => {
+                if(response.statusCode != 200) throw new Error(responseBody);
+                console.log("Body: %s", responseBody);
             });
-            req.setTimeout(timeoutMs, () => {
-                req.abort();
-                if (retryNum++ < retries) {
-                    console.log("Problem with request: timeout reached. retrying %d/%d", retryNum, retries);
-                    sendRequest();
-                } else {
-                    console.log("Problem with request: timeout reached. failed all retries.");
-                }
-            });
-            req.on("error", function (e) {
-                console.log("Problem with request: %s", e.message);
-            });
-            req.write(JSON.stringify(parsedEvents));
-            req.end();
-        };
-        sendRequest();
-    } catch (ex) {
-        console.log(ex.message);
+        });
+
+        request.on("timeout", () => {
+            request.destroy();
+            if (retryNumber++ < retryLimit) {
+                console.log("Problem with request: timeout reached. retrying %d/%d", retryNumber, retryLimit);
+                postToCoralogix(logs, callback, retryNumber, retryLimit);
+            } else {
+                callback(new Error("Failed all retries"));
+            }
+        });
+
+        request.on("error", callback);
+
+        request.write(logs);
+        request.end();
+    } catch (error) {
+        callback(error);
     }
 }
 
@@ -123,11 +107,22 @@ function getSeverityLevel(message) {
  * @param {object} callback - Function callback
  */
 function handler(event, context, callback) {
-    postEventsToCoralogix({
+    const parsedEvents = event.Records.map((eventRecord) => Buffer.from(eventRecord.kinesis.data, "base64").toString("ascii")).join("\n").split(newlinePattern);
+
+    zlib.gzip(JSON.stringify({
         "privateKey": process.env.private_key,
         "applicationName": appName,
         "subsystemName": subName,
-        "logEntries": parseEvents(event.Records.map(extractEvent).join("\n"))
+        "logEntries": parsedEvents.map((eventRecord) => {
+            return {
+                "timestamp": Date.now(),
+                "severity": getSeverityLevel(eventRecord),
+                "text": eventRecord
+            };
+        })
+    }), (error, compressedEvents) => { 
+        if (error) callback(error);
+        postToCoralogix(compressedEvents, callback);
     });
 };
 
