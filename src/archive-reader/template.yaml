@@ -17,7 +17,7 @@ Metadata:
       - import
       - restore
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.2
+    SemanticVersion: 1.0.3
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
@@ -64,7 +64,7 @@ Resources:
       Description: Import archived logs from S3 bucket to Coralogix.
       CodeUri: .
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs12.x
       MemorySize:
         Ref: FunctionMemorySize
       Timeout:

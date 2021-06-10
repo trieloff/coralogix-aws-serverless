@@ -16,7 +16,7 @@ Metadata:
       - datastream
       - api
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.2
+    SemanticVersion: 1.0.3
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
@@ -127,7 +127,7 @@ Resources:
       Description: Collect and send logs from Akamai DataStream API to Coralogix.
       CodeUri: .
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs12.x
       MemorySize:
         Ref: FunctionMemorySize
       Timeout:

@@ -15,7 +15,7 @@ Metadata:
       - cloudtrail
       - s3
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.4
+    SemanticVersion: 1.0.5
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
@@ -87,7 +87,7 @@ Resources:
       Description: Send CloudTrail logs from S3 bucket to Coralogix.
       CodeUri: .
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs12.x
       MemorySize:
         Ref: FunctionMemorySize
       Timeout:
