@@ -14,8 +14,62 @@ Metadata:
       - logs
       - s3
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.7
+    SemanticVersion: 1.0.12
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Coralogix Configuration
+        Parameters:
+          - CoralogixRegion
+          - PrivateKey
+          - ApplicationName
+          - SubsystemName
+      - Label:
+          default: Logging Configuration
+        Parameters:
+          - NewlinePattern
+          - SamplingRate
+          - BufferSize
+          - Debug
+      - Label:
+          default: S3 Configuration
+        Parameters:
+          - S3BucketName
+          - S3KeyPrefix
+          - S3KeySuffix
+      - Label:
+          default: Lambda Configuration
+        Parameters:
+          - FunctionMemorySize
+          - FunctionTimeout
+    ParameterLabels:
+      CoralogixRegion:
+        default: Region
+      PrivateKey:
+        default: Private Key
+      ApplicationName:
+        default: Application Name
+      SubsystemName:
+        default: Subsystem Name
+      NewlinePattern:
+        default: Newline Pattern
+      SamplingRate:
+        default: Sampling Rate
+      BufferSize:
+        default: Buffer Size
+      Debug:
+        default: Debug Mode
+      S3BucketName:
+        default: Bucket Name
+      S3KeyPrefix:
+        default: Key Prefix
+      S3KeySuffix:
+        default: Key Suffix
+      FunctionMemorySize:
+        default: Memory
+      FunctionTimeout:
+        default: Timeout
 Parameters:
   CoralogixRegion:
     Type: String
