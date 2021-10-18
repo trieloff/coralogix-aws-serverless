@@ -18,7 +18,7 @@ def lambda_handler(event, context):
             Bucket=event['ResourceProperties']['Bucket']
         )
         BucketNotificationConfiguration.pop('ResponseMetadata')
-        BucketNotificationConfiguration.update({'LambdaFunctionConfigurations': []})
+        BucketNotificationConfiguration.setdefault('LambdaFunctionConfigurations', [])
 
         if event['RequestType'] in ['Update', 'Delete']:
             BucketNotificationConfiguration['LambdaFunctionConfigurations'] = list(
