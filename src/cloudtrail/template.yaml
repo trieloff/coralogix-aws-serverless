@@ -15,7 +15,7 @@ Metadata:
       - cloudtrail
       - s3
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.6
+    SemanticVersion: 1.0.7
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
@@ -60,6 +60,13 @@ Parameters:
     Description: The S3 path suffix to watch
     MaxLength: 1024
     Default: '.json.gz'
+  FunctionArchitecture:
+    Type: String
+    Description: Lambda function architecture (x86_64, arm64)
+    AllowedValues:
+      - x86_64
+      - arm64
+    Default: x86_64
   FunctionMemorySize:
     Type: Number
     Description: Lambda function memory limit
@@ -88,6 +95,8 @@ Resources:
       CodeUri: .
       Handler: index.handler
       Runtime: nodejs12.x
+      Architectures:
+        - Ref: FunctionArchitecture
       MemorySize:
         Ref: FunctionMemorySize
       Timeout:

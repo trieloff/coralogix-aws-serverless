@@ -17,7 +17,7 @@ Metadata:
       - msk
       - stream
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.0
+    SemanticVersion: 1.0.1
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
@@ -58,6 +58,13 @@ Parameters:
     ConstraintDescription: Allowed characters a-z, A-Z, 0-9, . (dot), _ (underscore), and - (dash)
     MinLength: 2
     MaxLength: 249
+  FunctionArchitecture:
+    Type: String
+    Description: Lambda function architecture (x86_64, arm64)
+    AllowedValues:
+      - x86_64
+      - arm64
+    Default: x86_64
   FunctionMemorySize:
     Type: Number
     Description: Lambda function memory limit
@@ -86,6 +93,8 @@ Resources:
       CodeUri: ../kafka
       Handler: index.handler
       Runtime: nodejs12.x
+      Architectures:
+        - Ref: FunctionArchitecture
       MemorySize:
         Ref: FunctionMemorySize
       Timeout:

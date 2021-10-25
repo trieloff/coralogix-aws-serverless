@@ -14,7 +14,7 @@ Metadata:
       - logs
       - s3
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.13
+    SemanticVersion: 1.0.10
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -41,6 +41,7 @@ Metadata:
       - Label:
           default: Lambda Configuration
         Parameters:
+          - FunctionArchitecture
           - FunctionMemorySize
           - FunctionTimeout
     ParameterLabels:
@@ -66,6 +67,8 @@ Metadata:
         default: Key Prefix
       S3KeySuffix:
         default: Key Suffix
+      FunctionArchitecture:
+        default: Architecture
       FunctionMemorySize:
         default: Memory
       FunctionTimeout:
@@ -134,6 +137,13 @@ Parameters:
     Description: The S3 path suffix to watch
     MaxLength: 1024
     Default: ''
+  FunctionArchitecture:
+    Type: String
+    Description: Lambda function architecture (x86_64, arm64)
+    AllowedValues:
+      - x86_64
+      - arm64
+    Default: x86_64
   FunctionMemorySize:
     Type: Number
     Description: Lambda function memory limit
@@ -162,6 +172,8 @@ Resources:
       CodeUri: .
       Handler: index.handler
       Runtime: nodejs12.x
+      Architectures:
+        - Ref: FunctionArchitecture
       MemorySize:
         Ref: FunctionMemorySize
       Timeout:

@@ -16,7 +16,7 @@ Metadata:
       - datastream
       - api
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.3
+    SemanticVersion: 1.0.4
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
@@ -47,6 +47,13 @@ Parameters:
     MinLength: 1
     MaxLength: 64
     Default: DataStream
+  FunctionArchitecture:
+    Type: String
+    Description: Lambda function architecture (x86_64, arm64)
+    AllowedValues:
+      - x86_64
+      - arm64
+    Default: x86_64
   FunctionMemorySize:
     Type: Number
     Description: Lambda function memory limit
@@ -128,6 +135,8 @@ Resources:
       CodeUri: .
       Handler: index.handler
       Runtime: nodejs12.x
+      Architectures:
+        - Ref: FunctionArchitecture
       MemorySize:
         Ref: FunctionMemorySize
       Timeout:
