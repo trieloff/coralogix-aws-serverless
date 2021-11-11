@@ -6,6 +6,7 @@ import boto3
 import requests
 import testers.route53_tester
 import testers.s3_tester
+import testers.cloudtrail_tester
 
 
 class AutoPostureEvaluator:
@@ -54,7 +55,8 @@ class AutoPostureEvaluator:
         self.s3_buckets = boto3.client('s3').list_buckets()
         self.tests = [
             testers.s3_tester.S3Tester,
-            testers.route53_tester.Route53Tester
+            testers.route53_tester.Route53Tester,
+            testers.cloudtrail_tester.CloudtrailTester
         ]
 
     def run_tests(self):
