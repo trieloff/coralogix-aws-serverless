@@ -7,6 +7,8 @@ import requests
 import testers.route53_tester
 import testers.s3_tester
 import testers.cloudtrail_tester
+import testers.cloudfront_tester
+import testers.dynamodb_tester
 
 
 class AutoPostureEvaluator:
@@ -54,9 +56,11 @@ class AutoPostureEvaluator:
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
         self.s3_buckets = boto3.client('s3').list_buckets()
         self.tests = [
-            testers.s3_tester.S3Tester,
-            testers.route53_tester.Route53Tester,
-            testers.cloudtrail_tester.CloudtrailTester
+            #testers.s3_tester.S3Tester,
+            #testers.route53_tester.Route53Tester,
+            #testers.cloudtrail_tester.CloudtrailTester,
+            testers.cloudfront_tester.CloudfrontTester,
+            testers.dynamodb_tester.DynamoDBTester
         ]
 
     def run_tests(self):
