@@ -23,7 +23,9 @@ class CloudfrontTester(interfaces.TesterInterface):
         self.distribution_is_encrypted() + \
         self.distribution_is_field_level_encrypted() + \
         self.distribution_waf() + \
-        self.distribution_security_tls1_1_or_higher()
+        self.distribution_security_tls1_1_or_higher() + \
+        self.distribution_logging_is_enabled() + \
+        self.distribution_viewer_is_encrypted()
 
     def distribution_is_encrypted(self):
         result = []
@@ -114,7 +116,6 @@ class CloudfrontTester(interfaces.TesterInterface):
             for distribution_meta_items in distribution_meta["Origins"]["Items"]:
                 
                 if  "TLSv1" in distribution_meta_items.get('CustomOriginConfig',{}).get('OriginSslProtocols', {}).get('Items',{}):
-                    print ("IF")
                     result.append({
                     "item" : distributionId,
                     "distribution_domain_name" : distributionDomainName,
@@ -128,3 +129,57 @@ class CloudfrontTester(interfaces.TesterInterface):
             "timestamp": time.time()                    
             })
         return result
+
+
+    def distribution_logging_is_enabled(self):
+        result = []
+        #Get All Trails Description
+        distribution_list = self.aws_cloudfront_client.list_distributions()
+        #Get the Array and process each element
+        distributions = distribution_list.get("DistributionList")
+        distribution_items = distributions.get("Items")
+        for distribution_meta in distribution_items:
+            distributionId = distribution_meta["Id"]
+            distributionDomainName = distribution_meta["DomainName"]
+            distribution_config = self.aws_cloudfront_client.get_distribution_config(Id=distributionId)
+            if distribution_config["DistributionConfig"]["Logging"]["Enabled"] == False:
+
+                result.append({
+                "item" : distributionId,
+                "distribution_domain_name" : distributionDomainName,
+                "test_name" : 'distribution_logging_is_enabled',
+                "timestamp" : time.time()
+                })
+        if len(result) == 0:
+            result.append({
+            "test_name": 'distribution_logging_is_enabled',
+            "item": None,
+            "timestamp": time.time()                    
+            })
+        return result
+
+    def distribution_viewer_is_encrypted(self):
+        result = []
+        #Get All Trails Description
+        distribution_list = self.aws_cloudfront_client.list_distributions()
+        #Get the Array and process each element
+        distributions = distribution_list.get("DistributionList")
+        distribution_items = distributions.get("Items")
+        for distribution_meta in distribution_items:
+            distributionId = distribution_meta["Id"]
+            distributionDomainName = distribution_meta["DomainName"]
+            if  distribution_meta.get('DefaultCacheBehavior',{}).get('ViewerProtocolPolicy', {}) != "https-only":
+                result.append({
+                "item" : distributionId,
+                "distribution_domain_name" : distributionDomainName,
+                "test_name" : 'distribution_viewer_is_encrypted',
+                "timestamp" : time.time()
+                })
+        if len(result) == 0:
+            result.append({
+            "test_name": 'distribution_viewer_is_encrypted',
+            "item": None,
+            "timestamp": time.time()                    
+            })
+        return result
+                
