@@ -69,12 +69,12 @@ class AutoPostureEvaluator:
                 cur_log_message["timestamp"] = result_obj["timestamp"] * 1000
                 cur_log_message["event_sub_type"] = result_obj["test_name"]
                 cur_log_message["resource_type"] = result_obj["item_type"]
+                for key in result_obj.keys():
+                    if key not in cur_log_message and result_obj[key]:
+                        cur_log_message[key] = result_obj[key]
                 if result_obj["item"]:
                     cur_log_message["test_result"] = "issue_found"
                     cur_log_message["item"] = result_obj["item"]
-                    for key in result_obj.keys():
-                        if key not in cur_log_message:
-                            cur_log_message[key] = result_obj[key]
                 else:
                     cur_log_message["test_result"] = "no_issue_found"
 
