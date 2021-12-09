@@ -6,7 +6,7 @@
  * @link        https://coralogix.com/
  * @copyright   Coralogix Ltd.
  * @licence     Apache-2.0
- * @version     1.0.7
+ * @version     1.0.9
  * @since       1.0.0
  */
 
@@ -22,6 +22,7 @@ assert(process.env.private_key, "No private key!");
 const newlinePattern = process.env.newline_pattern ? RegExp(process.env.newline_pattern) : /(?:\r\n|\r|\n)/g;
 const sampling = process.env.sampling ? parseInt(process.env.sampling) : 1;
 const coralogixUrl = process.env.CORALOGIX_URL || "api.coralogix.com";
+const bufferCharset = process.env.buffer_charset || "utf8";
 
 /**
  * @description Send logs to Coralogix via API
@@ -126,7 +127,12 @@ function handler(event, context, callback) {
         if (error) {
             callback(error);
         } else {
-            const resultParsed = JSON.parse(result.toString("ascii"));
+            let resultParsed;
+            try {
+                resultParsed = JSON.parse(result.toString(bufferCharset))
+            } catch {
+                resultParsed = JSON.parse(result.toString("ascii"))
+            }
             const parsedEvents = resultParsed.logEvents.map(logEvent => logEvent.message).join("\r\n").split(newlinePattern);
 
             zlib.gzip(JSON.stringify(
