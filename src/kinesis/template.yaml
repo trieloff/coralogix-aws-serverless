@@ -15,15 +15,16 @@ Metadata:
       - stream
       - kinesis
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.5
+    SemanticVersion: 1.0.6
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region
+    Description: The Coralogix location region, possible options are [Europe, India, Singapore, US]
     AllowedValues:
       - Europe
       - India
+      - Singapore
       - US
     Default: Europe
   PrivateKey:
@@ -48,6 +49,13 @@ Parameters:
     Type: String
     Description: The pattern for lines splitting
     Default: '(?:\r\n|\r|\n)'
+  BufferCharset:
+    Type: String
+    Description: The charset to use for buffer decoding, possible options are [utf8, ascii]
+    AllowedValues:
+      - utf8
+      - ascii
+    Default: utf8
   KinesisStreamArn:
     Type: String
     Description: The ARN of the Kinesis stream to watch
@@ -57,7 +65,7 @@ Parameters:
     MaxLength: 2048
   FunctionArchitecture:
     Type: String
-    Description: Lambda function architecture (x86_64, arm64)
+    Description: Lambda function architecture, possible options are [x86_64, arm64]
     AllowedValues:
       - x86_64
       - arm64
@@ -74,14 +82,27 @@ Parameters:
     MinValue: 30
     MaxValue: 900
     Default: 300
+  NotificationEmail:
+    Type: String
+    Description: Failure notification email address
+    MaxLength: 320
+    Default: ''
 Mappings:
   CoralogixRegionMap:
     Europe:
       LogUrl: api.coralogix.com
     India:
       LogUrl: api.app.coralogix.in
+    Singapore:
+      LogUrl: api.coralogixsg.com
     US:
       LogUrl: api.coralogix.us
+Conditions:
+  IsNotificationEnabled:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: NotificationEmail
+          - ''
 Resources:
   LambdaFunction:
     Type: AWS::Serverless::Function
@@ -111,6 +132,12 @@ Resources:
             Ref: SubsystemName
           newline_pattern:
             Ref: NewlinePattern
+          buffer_charset:
+            Ref: BufferCharset
+      EventInvokeConfig:
+        DestinationConfig:
+          OnFailure:
+            Type: SNS
       Events:
         KinesisEvent:
           Type: Kinesis
@@ -119,3 +146,13 @@ Resources:
               Ref: KinesisStreamArn
             BatchSize: 10
             StartingPosition: LATEST
+
+  LambdaFunctionNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: IsNotificationEnabled
+    Properties:
+      Protocol: email
+      Endpoint:
+        Ref: NotificationEmail
+      TopicArn:
+        Ref: LambdaFunction.DestinationTopic

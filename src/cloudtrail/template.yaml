@@ -15,15 +15,16 @@ Metadata:
       - cloudtrail
       - s3
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.7
+    SemanticVersion: 1.0.8
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region
+    Description: The Coralogix location region, possible options are [Europe, India, Singapore, US]
     AllowedValues:
       - Europe
       - India
+      - Singapore
       - US
     Default: Europe
   PrivateKey:
@@ -62,7 +63,7 @@ Parameters:
     Default: '.json.gz'
   FunctionArchitecture:
     Type: String
-    Description: Lambda function architecture (x86_64, arm64)
+    Description: Lambda function architecture, possible options are [x86_64, arm64]
     AllowedValues:
       - x86_64
       - arm64
@@ -79,14 +80,27 @@ Parameters:
     MinValue: 30
     MaxValue: 900
     Default: 300
+  NotificationEmail:
+    Type: String
+    Description: Failure notification email address
+    MaxLength: 320
+    Default: ''
 Mappings:
   CoralogixRegionMap:
     Europe:
       LogUrl: https://api.coralogix.com/api/v1/logs
     India:
       LogUrl: https://api.app.coralogix.in/api/v1/logs
+    Singapore:
+      LogUrl: https://api.coralogixsg.com/api/v1/logs
     US:
       LogUrl: https://api.coralogix.us/api/v1/logs
+Conditions:
+  IsNotificationEnabled:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: NotificationEmail
+          - ''
 Resources:
   LambdaFunction:
     Type: AWS::Serverless::Function
@@ -118,6 +132,10 @@ Resources:
         - S3ReadPolicy:
             BucketName:
               Ref: S3BucketName
+      EventInvokeConfig:
+        DestinationConfig:
+          OnFailure:
+            Type: SNS
 
   CustomResourceLambdaTriggerFunction:
     Type: AWS::Serverless::Function
@@ -168,3 +186,13 @@ Resources:
         Ref: S3KeyPrefix
       Suffix:
         Ref: S3KeySuffix
+
+  LambdaFunctionNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: IsNotificationEnabled
+    Properties:
+      Protocol: email
+      Endpoint:
+        Ref: NotificationEmail
+      TopicArn:
+        Ref: LambdaFunction.DestinationTopic

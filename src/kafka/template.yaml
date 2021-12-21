@@ -16,15 +16,16 @@ Metadata:
       - kafka
       - stream
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.1
+    SemanticVersion: 1.0.2
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region
+    Description: The Coralogix location region, possible options are [Europe, India, Singapore, US]
     AllowedValues:
       - Europe
       - India
+      - Singapore
       - US
     Default: Europe
   PrivateKey:
@@ -69,7 +70,7 @@ Parameters:
     Description: The VPC security groups used to manage access to your Kafka cluster
   FunctionArchitecture:
     Type: String
-    Description: Lambda function architecture (x86_64, arm64)
+    Description: Lambda function architecture, possible options are [x86_64, arm64]
     AllowedValues:
       - x86_64
       - arm64
@@ -86,14 +87,27 @@ Parameters:
     MinValue: 30
     MaxValue: 900
     Default: 300
+  NotificationEmail:
+    Type: String
+    Description: Failure notification email address
+    MaxLength: 320
+    Default: ''
 Mappings:
   CoralogixRegionMap:
     Europe:
       LogUrl: api.coralogix.com
     India:
       LogUrl: api.app.coralogix.in
+    Singapore:
+      LogUrl: api.coralogixsg.com
     US:
       LogUrl: api.coralogix.us
+Conditions:
+  IsNotificationEnabled:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: NotificationEmail
+          - ''
 Resources:
   LambdaFunction:
     Type: AWS::Serverless::Function
@@ -121,6 +135,10 @@ Resources:
             Ref: ApplicationName
           sub_name:
             Ref: SubsystemName
+      EventInvokeConfig:
+        DestinationConfig:
+          OnFailure:
+            Type: SNS
       Policies:
         - Statement:
             - Sid: VPCAccessPolicy
@@ -173,3 +191,13 @@ Resources:
         Ref: KafkaSecurityGroups
       SubnetIds:
         Ref: KafkaSubnets
+
+  LambdaFunctionNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: IsNotificationEnabled
+    Properties:
+      Protocol: email
+      Endpoint:
+        Ref: NotificationEmail
+      TopicArn:
+        Ref: LambdaFunction.DestinationTopic

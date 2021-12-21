@@ -14,7 +14,7 @@ Metadata:
       - logs
       - s3
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.10
+    SemanticVersion: 1.0.11
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -44,6 +44,7 @@ Metadata:
           - FunctionArchitecture
           - FunctionMemorySize
           - FunctionTimeout
+          - NotificationEmail
     ParameterLabels:
       CoralogixRegion:
         default: Region
@@ -73,13 +74,16 @@ Metadata:
         default: Memory
       FunctionTimeout:
         default: Timeout
+      NotificationEmail:
+        default: Notification Email
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region
+    Description: The Coralogix location region [Europe, India, Singapore, US]
     AllowedValues:
       - Europe
       - India
+      - Singapore
       - US
     Default: Europe
   PrivateKey:
@@ -139,7 +143,7 @@ Parameters:
     Default: ''
   FunctionArchitecture:
     Type: String
-    Description: Lambda function architecture (x86_64, arm64)
+    Description: Lambda function architecture [x86_64, arm64]
     AllowedValues:
       - x86_64
       - arm64
@@ -156,14 +160,27 @@ Parameters:
     MinValue: 30
     MaxValue: 900
     Default: 300
+  NotificationEmail:
+    Type: String
+    Description: Failure notification email address
+    MaxLength: 320
+    Default: ''
 Mappings:
   CoralogixRegionMap:
     Europe:
       LogUrl: https://api.coralogix.com/api/v1/logs
     India:
       LogUrl: https://api.app.coralogix.in/api/v1/logs
+    Singapore:
+      LogUrl: https://api.coralogixsg.com/api/v1/logs
     US:
       LogUrl: https://api.coralogix.us/api/v1/logs
+Conditions:
+  IsNotificationEnabled:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: NotificationEmail
+          - ''
 Resources:
   LambdaFunction:
     Type: AWS::Serverless::Function
@@ -199,6 +216,10 @@ Resources:
             Ref: SamplingRate
           debug:
             Ref: Debug
+      EventInvokeConfig:
+        DestinationConfig:
+          OnFailure:
+            Type: SNS
       Policies:
         - S3ReadPolicy:
             BucketName:
@@ -253,3 +274,13 @@ Resources:
         Ref: S3KeyPrefix
       Suffix:
         Ref: S3KeySuffix
+
+  LambdaFunctionNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: IsNotificationEnabled
+    Properties:
+      Protocol: email
+      Endpoint:
+        Ref: NotificationEmail
+      TopicArn:
+        Ref: LambdaFunction.DestinationTopic

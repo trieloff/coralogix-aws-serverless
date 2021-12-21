@@ -6,7 +6,7 @@
  * @link        https://coralogix.com/
  * @copyright   Coralogix Ltd.
  * @licence     Apache-2.0
- * @version     1.0.5
+ * @version     1.0.6
  * @since       1.0.0
  */
 
@@ -23,6 +23,7 @@ const appName = process.env.app_name || "NO_APPLICATION";
 const subName = process.env.sub_name || "NO_SUBSYSTEM";
 const newlinePattern = process.env.newline_pattern ? RegExp(process.env.newline_pattern) : /(?:\r\n|\r|\n)/g;
 const coralogixUrl = process.env.CORALOGIX_URL || "api.coralogix.com";
+const bufferCharset = process.env.buffer_charset || "utf8";
 
 /**
  * @description Send logs to Coralogix via API
@@ -107,7 +108,13 @@ function getSeverityLevel(message) {
  * @param {object} callback - Function callback
  */
 function handler(event, context, callback) {
-    const parsedEvents = event.Records.map((eventRecord) => Buffer.from(eventRecord.kinesis.data, "base64").toString("ascii")).join("\n").split(newlinePattern);
+    let resultParsed;
+    try {
+        resultParsed = event.Records.map((eventRecord) => Buffer.from(eventRecord.kinesis.data, "base64").toString(bufferCharset))
+    } catch {
+        resultParsed = event.Records.map((eventRecord) => Buffer.from(eventRecord.kinesis.data, "base64").toString("ascii"))
+    }
+    const parsedEvents = resultParsed.join("\n").split(newlinePattern);
 
     zlib.gzip(JSON.stringify({
         "privateKey": process.env.private_key,

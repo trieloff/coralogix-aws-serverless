@@ -18,15 +18,16 @@ Metadata:
       - events
       - alerts
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.4
+    SemanticVersion: 1.0.5
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region
+    Description: The Coralogix location region, possible options are [Europe, India, Singapore, US]
     AllowedValues:
       - Europe
       - India
+      - Singapore
       - US
     Default: Europe
   PrivateKey:
@@ -77,6 +78,11 @@ Parameters:
       - True
       - False
     Default: True
+  NotificationEmail:
+    Type: String
+    Description: Failure notification email address
+    MaxLength: 320
+    Default: ''
   MongoDBAtlasPublicKey:
     Type: String
     Description: MongoDB Atlas API Public Key
@@ -115,8 +121,16 @@ Mappings:
       LogUrl: https://api.coralogix.com/api/v1/logs
     India:
       LogUrl: https://api.app.coralogix.in/api/v1/logs
+    Singapore:
+      LogUrl: api.coralogixsg.com
     US:
       LogUrl: https://api.coralogix.us/api/v1/logs
+Conditions:
+  IsNotificationEnabled:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: NotificationEmail
+          - ''
 Resources:
   LambdaFunction:
     Type: AWS::Serverless::Function
@@ -166,6 +180,10 @@ Resources:
                 - lambda:TagResource
               Resource:
                 Fn::Sub: "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*"
+      EventInvokeConfig:
+        DestinationConfig:
+          OnFailure:
+            Type: SNS
       Events:
         CloudWatchSchedule:
           Type: Schedule
@@ -174,3 +192,13 @@ Resources:
               Ref: Schedule
             Enabled:
               Ref: Enabled
+
+  LambdaFunctionNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: IsNotificationEnabled
+    Properties:
+      Protocol: email
+      Endpoint:
+        Ref: NotificationEmail
+      TopicArn:
+        Ref: LambdaFunction.DestinationTopic
