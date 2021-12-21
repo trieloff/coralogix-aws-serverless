@@ -41,20 +41,23 @@ class Tester(interfaces.TesterInterface):
                 raw_results = self.tests[test_name]["method"](organization)
                 if len(raw_results) > 0:
                     for item in raw_results:
-                        results.append({
-                            "timestamp": time.time(),
-                            "account": organization,
-                            "item": item,
-                            "item_type": self.tests[test_name]["result_item_type"],
-                            "test_name": test_name
-                        })
-                else:
-                    results.append({
-                        "timestamp": time.time(),
-                        "account": organization,
-                        "item": None,
-                        "item_type": self.tests[test_name]["result_item_type"],
-                        "test_name": test_name})
+                        if item["issue"]:
+                            results.append({
+                                "timestamp": time.time(),
+                                "account": organization,
+                                "item": item["item"],
+                                "item_type": self.tests[test_name]["result_item_type"],
+                                "test_name": test_name,
+                                "test_result": "issue_found"
+                            })
+                        else:
+                            results.append({
+                                "timestamp": time.time(),
+                                "account": organization,
+                                "item": item["item"],
+                                "item_type": self.tests[test_name]["result_item_type"],
+                                "test_name": test_name,
+                                "test_result": "no_issue_found"})
 
         return results
 
@@ -71,10 +74,15 @@ class Tester(interfaces.TesterInterface):
 
     def get_users_without_mfa(self, organization):
         result = []
-        raw_api_result = requests.get(headers=self.request_headers, url='https://api.github.com/orgs/' + organization + '/members?filter=2fa_disabled')
-        raw_api_result_obj = raw_api_result.json()
-        for user in raw_api_result_obj:
-            result.append(user["login"] + "@@" + organization)
+        raw_api_result_all_users = requests.get(headers=self.request_headers, url='https://api.github.com/orgs/' + organization + '/members')
+        raw_api_result_all_users_obj = raw_api_result_all_users.json()
+        raw_api_result_2fa_disabled = requests.get(headers=self.request_headers, url='https://api.github.com/orgs/' + organization + '/members?filter=2fa_disabled')
+        raw_api_result_2fa_disabled_obj = raw_api_result_2fa_disabled.json()
+        for user in raw_api_result_all_users_obj:
+            if user["login"] in [u.login for u in raw_api_result_2fa_disabled_obj]:
+                result.append({"item": user["login"] + "@@" + organization, "issue": True})
+            else:
+                result.append({"item": user["login"] + "@@" + organization, "issue": False})
 
         return result
 
@@ -84,7 +92,9 @@ class Tester(interfaces.TesterInterface):
         raw_api_result_obj = raw_api_result.json()
         for repo in raw_api_result_obj:
             if repo["allow_forking"]:
-                result.append(repo["name"])
+                result.append({"item": repo["name"], "issue": True})
+            else:
+                result.append({"item": repo["name"], "issue": False})
 
         return result
 
@@ -96,6 +106,8 @@ class Tester(interfaces.TesterInterface):
         for user in raw_api_result_obj:
             org_admins.append(user["login"])
         if len(org_admins) > 15:
-            result.append(organization)
+            result.append({"item": organization, "issue": True})
+        else:
+            result.append({"item": organization, "issue": False})
 
         return result
