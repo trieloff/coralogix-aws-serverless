@@ -50,13 +50,14 @@ class AutoPostureEvaluator:
                 raise Exception(error_template + " (NotArray). CANNOT CONTINUE.")
             else:
                 for result_obj in result:
-                    if "timestamp" not in result_obj or "item" not in result_obj or "item_type" not in result_obj:
+                    if "timestamp" not in result_obj or "item" not in result_obj or "item_type" not in result_obj or "test_result" not in result_obj:
                         raise Exception(error_template + " (FieldsMissing). CANNOT CONTINUE.")
-            test_types_reported = set([test_name["test_name"] for test_name in result])
-            for test_type in test_types_reported:
-                if len([test for test in result if test["test_name"] == test_type]) > 1 and \
-                        len([result_obj for result_obj in result if result_obj["test_name"] == test_type and result_obj["item"] is None]) > 0:
-                    raise Exception(error_template + " (ItemIsNoneButMoreThanSingleResultReturned). CANNOT CONTINUE.")
+                    if result_obj["item"] is None:
+                        raise Exception(error_template + " (ItemIsNone). CANNOT CONTINUE.")
+                    if not isinstance(result_obj["timestamp"], float):
+                        raise Exception(error_template + " (ItemDateIsNotFloat). CANNOT CONTINUE.")
+                    if len(str(int(result_obj["timestamp"]))) != 10:
+                        raise Exception(error_template + " (ItemDateIsNotTenDigitsIntPart). CANNOT CONTINUE.")
 
             log_message = {
                 "event_type": "auto_posture_evaluator",
@@ -72,11 +73,7 @@ class AutoPostureEvaluator:
                 for key in result_obj.keys():
                     if key not in cur_log_message and result_obj[key]:
                         cur_log_message[key] = result_obj[key]
-                if result_obj["item"]:
-                    cur_log_message["test_result"] = "issue_found"
-                    cur_log_message["item"] = result_obj["item"]
-                else:
-                    cur_log_message["test_result"] = "no_issue_found"
+                cur_log_message["item"] = result_obj["item"]
 
                 events_buffer.append({
                     "timestamp": cur_log_message["timestamp"],
