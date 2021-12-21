@@ -43,7 +43,8 @@ class Tester(interfaces.TesterInterface):
             record_names = [record_name["Name"] for record_name in zone_records]
 
             # Get public IPs per DNS record
-            for record_name in record_names:
+            for record in zone_records:
+                record_name = record["Name"]
                 dangling_ip_addresses = []
                 registered_addresses = [record["ResourceRecords"] for record in zone_records if record["Name"] == record_name][0]
                 registered_ip_addresses = [resource_record["Value"] for resource_record in registered_addresses if re.match('\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}', str(resource_record["Value"]))]
@@ -58,28 +59,33 @@ class Tester(interfaces.TesterInterface):
                             else:
                                 raise ex
 
-                for dangling_ip_address in dangling_ip_addresses:
+                if len(dangling_ip_addresses) > 0:
+                    for dangling_ip_address in dangling_ip_addresses:
+                        result.append({
+                            "user": self.user_id,
+                            "account_arn": self.account_arn,
+                            "account": self.account_id,
+                            "item": dangling_ip_address + "@@" + record_name,
+                            "item_type": "dns_record",
+                            "dns_record": record_name,
+                            "record": record,
+                            "test_name": 'dangling_dns_records',
+                            "dangling_ip": dangling_ip_address,
+                            "zone": cur_zone["Id"],
+                            "timestamp": time.time(),
+                            "test_result": "issue_found"
+                        })
+                else:
                     result.append({
                         "user": self.user_id,
                         "account_arn": self.account_arn,
                         "account": self.account_id,
-                        "item": dangling_ip_address + "@@" + record_name,
-                        "item_type": "dns_record",
-                        "dns_record": record_name,
                         "test_name": 'dangling_dns_records',
-                        "dangling_ip": dangling_ip_address,
-                        "zone": cur_zone["Id"],
-                        "timestamp": time.time()
+                        "item": record_name,
+                        "item_type": "dns_record",
+                        "record": record,
+                        "timestamp": time.time(),
+                        "test_result": "no_issue_found"
                     })
 
-        if len(result) == 0:
-            result.append({
-                "user": self.user_id,
-                "account_arn": self.account_arn,
-                "account": self.account_id,
-                "test_name": 'dangling_dns_records',
-                "item": None,
-                "item_type": "dns_record",
-                "timestamp": time.time()
-            })
         return result
