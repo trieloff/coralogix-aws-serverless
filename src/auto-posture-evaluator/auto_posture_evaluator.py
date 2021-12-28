@@ -2,7 +2,6 @@ import datetime
 import json
 import os
 import time
-import boto3
 import requests
 import importlib
 import sys
@@ -40,9 +39,16 @@ class AutoPostureEvaluator:
     def run_tests(self):
         events_buffer = []
         test_id = datetime.datetime.now().isoformat()
-        for tester in self.tests:
-            cur_tester = tester()
-            result = cur_tester.run_tests()
+
+        for i in range(0, len(self.tests)):
+            tester = self.tests[i]
+            try:
+                cur_tester = tester()
+                result = cur_tester.run_tests()
+            except Exception as exTesterException:
+                print("WARN: The tester " + str(testers_module_names[i]) + " has crashed with the following exception during 'run_tests()'. SKIPPED: " + str(exTesterException))
+                continue
+
             error_template = "The result object from the tester " + cur_tester.declare_tested_service() + " does not match the required standard"
             if result is None:
                 raise Exception(error_template + " (ResultIsNone). CANNOT CONTINUE.")
@@ -75,6 +81,8 @@ class AutoPostureEvaluator:
                         cur_log_message[key] = result_obj[key]
                 cur_log_message["item"] = result_obj["item"]
 
+                self.update_frameworks_classifications(cur_log_message)
+
                 events_buffer.append({
                     "timestamp": cur_log_message["timestamp"],
                     "text": json.dumps({"security": cur_log_message}),
@@ -86,6 +94,29 @@ class AutoPostureEvaluator:
 
         if len(events_buffer) > 0:
             self.logger(events_buffer.copy())
+
+    def update_frameworks_classifications(self, cur_log_message):
+        # TODO: Update this method with a real table
+        cur_log_message["classifications"] = {
+            "HIPPA": False,
+            "PCI-DSS": False,
+            "SOC2": False,
+            "ISO": False,
+            "CIS": False,
+            "NIST": False
+        }
+        if len(cur_log_message["event_sub_type"]) < 25:
+            cur_log_message["classifications"]["HIPPA"] = True
+        if 23 <= len(cur_log_message["event_sub_type"]) < 35:
+            cur_log_message["classifications"]["PCI DSS"] = True
+        if 32 <= len(cur_log_message["event_sub_type"]) < 42:
+            cur_log_message["classifications"]["SOC2"] = True
+        if 39 <= len(cur_log_message["event_sub_type"]) < 45:
+            cur_log_message["classifications"]["ISO"] = True
+        if 42 <= len(cur_log_message["event_sub_type"]) < 50:
+            cur_log_message["classifications"]["CIS"] = True
+        if len(cur_log_message["event_sub_type"]) > 48:
+            cur_log_message["classifications"]["NIST"] = True
 
     def logger(self, log_messages):
         cur_logs_payload = self.coralogix_logs_object.copy()
