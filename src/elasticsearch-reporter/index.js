@@ -6,7 +6,7 @@
  * @link        https://coralogix.com/
  * @copyright   Coralogix Ltd.
  * @licence     Apache-2.0
- * @version     1.0.6
+ * @version     1.0.7
  * @since       1.0.0
  */
 
@@ -36,10 +36,7 @@ const reportTime = new Date().toISOString();
 const es = new elasticsearch.Client({
     node: coralogixUrl,
     maxRetries: 3,
-    requestTimeout: requestTimeout,
-    headers: {
-        "token": process.env.private_key
-    }
+    requestTimeout: requestTimeout
 });
 
 /**
@@ -52,7 +49,7 @@ function handler(event, context, callback) {
     es.search({
         index: "*",
         body: query
-    }, (error, result) => {
+    }, {headers: { "token": process.env.private_key} }, (error, result) => {
         if (error) {
             callback(error);
         } else {
