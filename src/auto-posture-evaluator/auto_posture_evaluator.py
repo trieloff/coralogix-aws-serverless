@@ -2,7 +2,9 @@ import datetime
 import json
 import os
 import time
+import uuid
 import requests
+
 import importlib
 import sys
 testers_module_names = []
@@ -38,7 +40,8 @@ class AutoPostureEvaluator:
 
     def run_tests(self):
         events_buffer = []
-        test_id = datetime.datetime.now().isoformat()
+        test_id = str(uuid.uuid4())
+        test_start_timestamp = datetime.datetime.now().isoformat()
 
         for i in range(0, len(self.tests)):
             tester = self.tests[i]
@@ -69,17 +72,26 @@ class AutoPostureEvaluator:
                 "event_type": "auto_posture_evaluator",
                 "service": cur_tester.declare_tested_service(),
                 "provider": cur_tester.declare_tested_provider(),
-                "test_id": test_id
+                "test_id": test_id,
+                "test_start_time": test_start_timestamp,
+                "timestamp": 0,
+                "item": "",
+                "item_type": "",
+                "test_name": "",
+                "test_result": "",
+                "classifications": {},
+                "additional_data": {}
             }
             for result_obj in result:
                 cur_log_message = log_message.copy()
                 cur_log_message["timestamp"] = result_obj["timestamp"] * 1000
-                cur_log_message["event_sub_type"] = result_obj["test_name"]
-                cur_log_message["resource_type"] = result_obj["item_type"]
+                cur_log_message["item"] = result_obj["item"]
+                cur_log_message["item_type"] = result_obj["item_type"]
+                cur_log_message["test_name"] = result_obj["test_name"]
+                cur_log_message["test_result"] = result_obj["test_result"]
                 for key in result_obj.keys():
                     if key not in cur_log_message and result_obj[key]:
-                        cur_log_message[key] = result_obj[key]
-                cur_log_message["item"] = result_obj["item"]
+                        cur_log_message["additional_data"][key] = result_obj[key]
 
                 self.update_frameworks_classifications(cur_log_message)
 
@@ -98,25 +110,27 @@ class AutoPostureEvaluator:
     def update_frameworks_classifications(self, cur_log_message):
         # TODO: Update this method with a real table
         cur_log_message["classifications"] = {
-            "HIPPA": False,
-            "PCI-DSS": False,
-            "SOC2": False,
-            "ISO": False,
-            "CIS": False,
-            "NIST": False
+            "HIPPA": "",
+            "PCI-DSS": "",
+            "SOC2": "",
+            "ISO": "",
+            "CIS": "",
+            "NIST": ""
         }
-        if len(cur_log_message["event_sub_type"]) < 25:
-            cur_log_message["classifications"]["HIPPA"] = True
-        if 23 <= len(cur_log_message["event_sub_type"]) < 35:
-            cur_log_message["classifications"]["PCI DSS"] = True
-        if 32 <= len(cur_log_message["event_sub_type"]) < 42:
-            cur_log_message["classifications"]["SOC2"] = True
-        if 39 <= len(cur_log_message["event_sub_type"]) < 45:
-            cur_log_message["classifications"]["ISO"] = True
-        if 42 <= len(cur_log_message["event_sub_type"]) < 50:
-            cur_log_message["classifications"]["CIS"] = True
-        if len(cur_log_message["event_sub_type"]) > 48:
-            cur_log_message["classifications"]["NIST"] = True
+        test_name_length = len(cur_log_message["test_name"])
+        test_name_first_part_length = len(cur_log_message["test_name"].split("_", maxsplit=1)[0])
+        if test_name_length < 25:
+            cur_log_message["classifications"]["HIPPA"] = str(test_name_first_part_length) + "." + str(test_name_length)
+        if 23 <= test_name_length < 35:
+            cur_log_message["classifications"]["PCI DSS"] = str(test_name_first_part_length) + "." + str(test_name_length)
+        if 32 <= test_name_length < 42:
+            cur_log_message["classifications"]["SOC2"] = str(test_name_first_part_length) + "." + str(test_name_length)
+        if 39 <= test_name_length < 45:
+            cur_log_message["classifications"]["ISO"] = str(test_name_first_part_length) + "." + str(test_name_length)
+        if 42 <= test_name_length < 50:
+            cur_log_message["classifications"]["CIS"] = str(test_name_first_part_length) + "." + str(test_name_length)
+        if test_name_length > 48:
+            cur_log_message["classifications"]["NIST"] = str(test_name_first_part_length) + "." + str(test_name_length)
 
     def logger(self, log_messages):
         cur_logs_payload = self.coralogix_logs_object.copy()
