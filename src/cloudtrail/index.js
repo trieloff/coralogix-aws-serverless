@@ -6,7 +6,7 @@
  * @link        https://coralogix.com/
  * @copyright   Coralogix Ltd.
  * @licence     Apache-2.0
- * @version     1.0.8
+ * @version     1.0.9
  * @since       1.0.0
  */
 
@@ -37,13 +37,17 @@ const logger = new coralogix.CoralogixLogger(appName);
  * @param {Buffer} content - Logs records data
  */
 function sendLogs(content) {
-    const logs = JSON.parse(content.toString("utf8")).Records;
-    for (let i = 0; i < logs.length; i++) {
-        const log = new coralogix.Log({
-            text: JSON.stringify(logs[i]),
-            severity: 3
-        })
-        logger.addLog(log);
+    try {
+        const logs = JSON.parse(content.toString("utf8")).Records;
+        for (let i = 0; i < logs.length; i++) {
+            const log = new coralogix.Log({
+                text: JSON.stringify(logs[i]),
+                severity: 3
+            })
+            logger.addLog(log);
+        }
+    } catch (error) {
+        console.log(error);
     }
 }
 
