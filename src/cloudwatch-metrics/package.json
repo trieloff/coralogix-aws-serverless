@@ -1,8 +1,8 @@
 {
-  "name": "coralogix-cloudwatch",
-  "title": "AWS CloudWatch Lambda function for Coralogix",
-  "version": "1.0.9",
-  "description": "AWS Lambda function to send CloudWatch logs to Coralogix",
+  "name": "coralogix-cloudwatch-metrics",
+  "title": "AWS CloudWatch Metrics Lambda function for Coralogix",
+  "version": "1.0.0",
+  "description": "AWS Lambda function to send CloudWatch metrics to Coralogix",
   "homepage": "https://coralogix.com",
   "license": "Apache-2.0",
   "main": "index.js",
@@ -23,7 +23,7 @@
   ],
   "keywords": [
     "coralogix",
-    "logs",
+    "metrics",
     "cloudwatch",
     "aws",
     "javascript",

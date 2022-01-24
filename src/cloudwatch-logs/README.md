@@ -1,4 +1,4 @@
-# Coralogix-CloudWatch
+# Coralogix-CloudWatch-Logs
 
 This application retrieves **CloudWatch** logs and sends them to your **Coralogix** account.
 

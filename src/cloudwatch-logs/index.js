@@ -1,5 +1,5 @@
 /**
- * AWS CloudWatch Lambda function for Coralogix
+ * AWS CloudWatch Logs Lambda function for Coralogix
  *
  * @file        This file is lambda function source code
  * @author      Coralogix Ltd. <info@coralogix.com>
