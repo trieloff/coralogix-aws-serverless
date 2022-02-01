@@ -122,7 +122,7 @@ class AutoPostureEvaluator:
         if test_name_length < 25:
             cur_log_message["classifications"]["HIPPA"] = str(test_name_first_part_length) + "." + str(test_name_length)
         if 23 <= test_name_length < 35:
-            cur_log_message["classifications"]["PCI DSS"] = str(test_name_first_part_length) + "." + str(test_name_length)
+            cur_log_message["classifications"]["PCI-DSS"] = str(test_name_first_part_length) + "." + str(test_name_length)
         if 32 <= test_name_length < 42:
             cur_log_message["classifications"]["SOC2"] = str(test_name_first_part_length) + "." + str(test_name_length)
         if 39 <= test_name_length < 45:
