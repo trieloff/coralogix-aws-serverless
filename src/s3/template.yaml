@@ -14,7 +14,7 @@ Metadata:
       - logs
       - s3
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.11
+    SemanticVersion: 1.0.12
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -79,9 +79,10 @@ Metadata:
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region [Europe, India, Singapore, US]
+    Description: The Coralogix location region [Europe, Europe2, India, Singapore, US]
     AllowedValues:
       - Europe
+      - Europe2
       - India
       - Singapore
       - US
@@ -169,6 +170,8 @@ Mappings:
   CoralogixRegionMap:
     Europe:
       LogUrl: https://api.coralogix.com/api/v1/logs
+    Europe2:
+      LogUrl: https://api.eu2.coralogix.com/api/v1/logs
     India:
       LogUrl: https://api.app.coralogix.in/api/v1/logs
     Singapore:

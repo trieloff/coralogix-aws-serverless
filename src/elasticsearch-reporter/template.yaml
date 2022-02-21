@@ -17,14 +17,15 @@ Metadata:
       - ses
       - email
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.6
+    SemanticVersion: 1.0.8
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region, possible options are [Europe, India, Singapore, US]
+    Description: The Coralogix location region, possible options are [Europe, Europe2, India, Singapore, US]
     AllowedValues:
       - Europe
+      - Europe2
       - India
       - Singapore
       - US
@@ -109,6 +110,8 @@ Mappings:
   CoralogixRegionMap:
     Europe:
       LogUrl: https://coralogix-esapi.coralogix.com:9443
+    Europe2:
+      LogUrl: https://es-api.eu2.coralogix.com:9443
     India:
       LogUrl: https://es-api.app.coralogix.in:9443
     Singapore:

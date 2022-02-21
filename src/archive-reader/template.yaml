@@ -22,9 +22,10 @@ Metadata:
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region, possible options are [Europe, India, Singapore, US]
+    Description: The Coralogix location region, possible options are [Europe, Europe2, India, Singapore, US]
     AllowedValues:
       - Europe
+      - Europe2
       - India
       - Singapore
       - US
@@ -65,6 +66,8 @@ Mappings:
   CoralogixRegionMap:
     Europe:
       LogUrl: https://api.coralogix.com/api/v1/logs
+    Europe2:
+      LogUrl: https://api.eu2.coralogix.com/api/v1/logs
     India:
       LogUrl: https://api.app.coralogix.in/api/v1/logs
     Singapore:

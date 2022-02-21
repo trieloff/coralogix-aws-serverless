@@ -1,7 +1,7 @@
 {
   "name": "coralogix-akamai-datastream",
   "title": "AWS Lambda function for Akamai DataStream API and Coralogix integration",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "AWS Lambda function for collecting and sending Akamai DataStream logs to Coralogix",
   "homepage": "https://coralogix.com",
   "license": "Apache-2.0",

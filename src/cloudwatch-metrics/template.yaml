@@ -14,14 +14,15 @@ Metadata:
       - metrics
       - cloudwatch
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.0
+    SemanticVersion: 1.0.1
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
 Parameters:
   CoralogixRegion:
     Type: String
-    Description: The Coralogix location region, possible options are [Europe, India, Singapore, US]
+    Description: The Coralogix location region, possible options are [Europe, Europe2, India, Singapore, US]
     AllowedValues:
       - Europe
+      - Europe2
       - India
       - Singapore
       - US
@@ -72,6 +73,8 @@ Mappings:
   CoralogixRegionMap:
     Europe:
       LogUrl: api.coralogix.com
+    Europe2:
+      LogUrl: api.eu2.coralogix.com
     India:
       LogUrl: api.app.coralogix.in
     Singapore:
