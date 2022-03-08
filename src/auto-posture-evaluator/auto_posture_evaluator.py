@@ -188,7 +188,9 @@ class AutoPostureEvaluator:
                 loop.run_until_complete(self.client.post_security_report(api_key=self.api_key, security_report=report))
             except Exception as ex:
                 print("Sending requests failed", ex)
+
             self.channel.close()
+
             if self.send_to_coralogix:
                 response = requests.post(
                     url="https://" + self.coralogix_endpoint + "/api/v1/logs",
@@ -199,7 +201,6 @@ class AutoPostureEvaluator:
                     time.time() - time_started) + "ms. Response status is " + str(
                     response.status_code) + ", Response text: " + response.text)
 
-                return response.text, cur_logs_payload
-
+            return cur_logs_payload
         except Exception as ex:
             print("ERROR: Failed to send " + str(len(log_messages)) + " events after " + str(time.time() - time_started) + "ms due to the following exception: " + str(ex))
