@@ -10,3 +10,4 @@ zip -r ../deployment-package.zip .
 cd ..
 zip -g deployment-package.zip ./*.py
 zip -g deployment-package.zip testers/*
+zip -g deployment-package.zip model/*
