@@ -175,7 +175,7 @@ class AutoPostureEvaluator:
             cur_log_message["classifications"]["NIST"] = str(test_name_first_part_length) + "." + str(test_name_length)
 
     def logger(self, log_messages):
-        execution_id = datetime.date.today().isoformat() + "_" + str(uuid.uuid4())
+        execution_id = str(uuid)
         cur_logs_payload = self.coralogix_logs_object.copy()
         cur_logs_payload["logEntries"] = log_messages
         time_started = time.time()
