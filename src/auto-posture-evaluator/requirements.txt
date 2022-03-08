@@ -3,3 +3,6 @@ ipaddress
 botocore
 requests
 jmespath
+betterproto[compiler]==2.0.0b4
+grpclib
+protobuf
