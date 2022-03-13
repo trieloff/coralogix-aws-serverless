@@ -1,8 +1,6 @@
 import asyncio
 import datetime
-import json
 import os
-import time
 import uuid
 from asyncio import AbstractEventLoop
 
@@ -36,7 +34,6 @@ def _to_model(log_message, execution_id, provider, service, start_time, end_time
     test_result = SecurityReportTestResultResult.TEST_FAILED
     if log_message["result"] == "no_issue_found":
         test_result = SecurityReportTestResultResult.TEST_PASSED
-    _update_frameworks_classifications(log_message)
     for key in converted_log_message.keys():
         if not hasattr(SecurityReportTestResult, key) and converted_log_message[key]:
             additional_data[key] = converted_log_message[key]
@@ -60,9 +57,8 @@ class AutoPostureEvaluator:
             raise Exception("Missing the PRIVATE_KEY environment variable. CANNOT CONTINUE")
 
         # Configuration for grpc endpoint
-        endpoint = os.environ.get("CORALOGIX_ENDPOINT_HOST")  # eg.: api.coralogix.net
+        endpoint = os.environ.get("CORALOGIX_ENDPOINT_HOST")  # eg.: ng-api-grpc.dev-shared.coralogix.net
         port = os.environ.get("CORALOGIX_ENDPOINT_PORT", "443")
-        self.send_to_coralogix = os.environ.get("SEND_TO_CORALOGIX", False)
         self.channel = Channel(host=endpoint, port=int(port), ssl=True)
         self.client = SecurityReportIngestionServiceStub(channel=self.channel)
         self.api_key = os.environ.get('API_KEY')
@@ -92,19 +88,25 @@ class AutoPostureEvaluator:
 
             error_template = "The result object from the tester " + cur_tester.declare_tested_service() + " does not match the required standard"
             if tester_result is None:
-                raise Exception(error_template + " (ResultIsNone). CANNOT CONTINUE.")
+                print(error_template + " (ResultIsNone). CANNOT CONTINUE.")
+                continue
             if not isinstance(tester_result, list):
-                raise Exception(error_template + " (NotArray). CANNOT CONTINUE.")
+                print(error_template + " (NotArray). CANNOT CONTINUE.")
+                continue
             else:
                 for result_obj in tester_result:
                     if "timestamp" not in result_obj or "item" not in result_obj or "item_type" not in result_obj or "test_result" not in result_obj:
-                        raise Exception(error_template + " (FieldsMissing). CANNOT CONTINUE.")
+                        print(error_template + " (FieldsMissing). CANNOT CONTINUE.")
+                        continue
                     if result_obj["item"] is None:
-                        raise Exception(error_template + " (ItemIsNone). CANNOT CONTINUE.")
+                        print(error_template + " (ItemIsNone). CANNOT CONTINUE.")
+                        continue
                     if not isinstance(result_obj["timestamp"], float):
-                        raise Exception(error_template + " (ItemDateIsNotFloat). CANNOT CONTINUE.")
+                        print(error_template + " (ItemDateIsNotFloat). CANNOT CONTINUE.")
+                        continue
                     if len(str(int(result_obj["timestamp"]))) != 10:
-                        raise Exception(error_template + " (ItemDateIsNotTenDigitsIntPart). CANNOT CONTINUE.")
+                        print(error_template + " (ItemDateIsNotTenDigitsIntPart). CANNOT CONTINUE.")
+                        continue
             try:
 
                 security_report_test_result_list = list(map(lambda x: _to_model(x,
@@ -121,30 +123,4 @@ class AutoPostureEvaluator:
             except Exception as ex:
                 print("ERROR: Failed to send " + str(len(security_report_test_result_list)) + " for tester " +
                       str(testers_module_names[i]) + " events due to the following exception: " + str(ex))
-            self.channel.close()
-
-
-def _update_frameworks_classifications(cur_log_message):
-        # TODO: Update this method with a real table
-        cur_log_message["classifications"] = {
-            "HIPPA": "",
-            "PCI-DSS": "",
-            "SOC2": "",
-            "ISO": "",
-            "CIS": "",
-            "NIST": ""
-        }
-        test_name_length = len(cur_log_message["name"])
-        test_name_first_part_length = len(cur_log_message["name"].split("_", maxsplit=1)[0])
-        if test_name_length < 25:
-            cur_log_message["classifications"]["HIPPA"] = str(test_name_first_part_length) + "." + str(test_name_length)
-        if 23 <= test_name_length < 35:
-            cur_log_message["classifications"]["PCI-DSS"] = str(test_name_first_part_length) + "." + str(test_name_length)
-        if 32 <= test_name_length < 42:
-            cur_log_message["classifications"]["SOC2"] = str(test_name_first_part_length) + "." + str(test_name_length)
-        if 39 <= test_name_length < 45:
-            cur_log_message["classifications"]["ISO"] = str(test_name_first_part_length) + "." + str(test_name_length)
-        if 42 <= test_name_length < 50:
-            cur_log_message["classifications"]["CIS"] = str(test_name_first_part_length) + "." + str(test_name_length)
-        if test_name_length > 48:
-            cur_log_message["classifications"]["NIST"] = str(test_name_first_part_length) + "." + str(test_name_length)
+        self.channel.close()
