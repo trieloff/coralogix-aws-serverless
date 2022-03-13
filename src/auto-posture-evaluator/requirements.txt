@@ -5,3 +5,4 @@ requests
 jmespath
 grpclib
 protobuf
+betterproto==2.0.0b4
