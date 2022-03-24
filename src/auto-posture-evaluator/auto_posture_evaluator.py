@@ -88,10 +88,13 @@ class AutoPostureEvaluator:
 
             error_template = "The result object from the tester " + cur_tester.declare_tested_service() + " does not match the required standard"
             if tester_result is None:
-                print(error_template + " (ResultIsNone). CANNOT CONTINUE.")
+                print(error_template + " (ResultIsNone).")
                 continue
             if not isinstance(tester_result, list):
-                print(error_template + " (NotArray). CANNOT CONTINUE.")
+                print(error_template + " (NotArray).")
+                continue
+            if len(tester_result) == 0:
+                print(error_template + " (Empty list).")
                 continue
             else:
                 for result_obj in tester_result:
