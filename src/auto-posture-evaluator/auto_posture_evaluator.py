@@ -74,7 +74,7 @@ class AutoPostureEvaluator:
                 self.tests.append(sys.modules[tester_module].__dict__["Tester"])
 
     def run_tests(self):
-        execution_id = str(uuid)
+        execution_id = str(uuid.uuid4())
         for i in range(0, len(self.tests)):
             cur_test_start_timestamp = datetime.datetime.now()
             tester = self.tests[i]
