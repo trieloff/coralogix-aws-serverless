@@ -61,7 +61,6 @@ class AutoPostureEvaluator:
         port = os.environ.get("CORALOGIX_ENDPOINT_PORT", "443")
         self.channel = Channel(host=endpoint, port=int(port), ssl=True)
         self.client = SecurityReportIngestionServiceStub(channel=self.channel)
-        self.api_key = os.environ.get('API_KEY')
         self.private_key = os.environ.get('PRIVATE_KEY')
         self.context = SecurityReportContext(
             private_key=self.private_key,
@@ -83,22 +82,26 @@ class AutoPostureEvaluator:
                 tester_result = cur_tester.run_tests()
                 cur_test_end_timestamp = datetime.datetime.now()
             except Exception as exTesterException:
-                print("WARN: The tester " + str(testers_module_names[i]) + " has crashed with the following exception during 'run_tests()'. SKIPPED: " + str(exTesterException))
+                print("WARN: The tester " + str(testers_module_names[i]) +
+                      " has crashed with the following exception during 'run_tests()'. SKIPPED: " +
+                      str(exTesterException))
                 continue
 
-            error_template = "The result object from the tester " + cur_tester.declare_tested_service() + " does not match the required standard"
+            error_template = "The result object from the tester " + cur_tester.declare_tested_service() + \
+                             " does not match the required standard"
             if tester_result is None:
                 print(error_template + " (ResultIsNone).")
                 continue
             if not isinstance(tester_result, list):
                 print(error_template + " (NotArray).")
                 continue
-            if len(tester_result) == 0:
-                print(error_template + " (Empty list).")
+            if not tester_result:
+                print(error_template + " (Empty array).")
                 continue
             else:
                 for result_obj in tester_result:
-                    if "timestamp" not in result_obj or "item" not in result_obj or "item_type" not in result_obj or "test_result" not in result_obj:
+                    if "timestamp" not in result_obj or "item" not in result_obj or "item_type" \
+                            not in result_obj or "test_result" not in result_obj:
                         print(error_template + " (FieldsMissing). CANNOT CONTINUE.")
                         continue
                     if result_obj["item"] is None:
@@ -119,11 +122,13 @@ class AutoPostureEvaluator:
                                                                                 cur_test_start_timestamp,
                                                                                 cur_test_end_timestamp), tester_result))
                 report = SecurityReport(context=self.context, test_results=security_report_test_result_list)
-                print("DEBUG: Sent " + str(len(security_report_test_result_list)) + " events for " + str(testers_module_names[i]))
-                loop: AbstractEventLoop = asyncio.get_event_loop()
-                loop.run_until_complete(
-                    self.client.post_security_report(api_key=self.api_key, security_report=report))
-            except Exception as ex:
-                print("ERROR: Failed to send " + str(len(security_report_test_result_list)) + " for tester " +
-                      str(testers_module_names[i]) + " events due to the following exception: " + str(ex))
+                print("DEBUG: Sent " + str(len(security_report_test_result_list)) + " events for " +
+                      str(testers_module_names[i]))
+                try:
+                    loop: AbstractEventLoop = asyncio.get_event_loop()
+                    loop.run_until_complete(
+                        self.client.post_security_report(api_key=self.private_key, security_report=report))
+                except Exception as ex:
+                    print("ERROR: Failed to send " + str(len(security_report_test_result_list)) + " for tester " +
+                          str(testers_module_names[i]) + " events due to the following exception: " + str(ex))
         self.channel.close()
