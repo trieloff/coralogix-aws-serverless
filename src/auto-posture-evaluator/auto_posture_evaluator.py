@@ -113,22 +113,22 @@ class AutoPostureEvaluator:
                     if len(str(int(result_obj["timestamp"]))) != 10:
                         print(error_template + " (ItemDateIsNotTenDigitsIntPart). CANNOT CONTINUE.")
                         continue
+            security_report_test_result_list = list(map(lambda x: _to_model(x,
+                                                                            execution_id,
+                                                                            cur_tester.declare_tested_provider(),
+                                                                            cur_tester.declare_tested_service(),
+                                                                            cur_test_start_timestamp,
+                                                                            cur_test_end_timestamp), tester_result))
+            report = SecurityReport(context=self.context, test_results=security_report_test_result_list)
+            print("DEBUG: Sent " + str(len(security_report_test_result_list)) + " events for " +
+                  str(testers_module_names[i]))
+            loop: AbstractEventLoop = asyncio.get_event_loop()
             try:
-
-                security_report_test_result_list = list(map(lambda x: _to_model(x,
-                                                                                execution_id,
-                                                                                cur_tester.declare_tested_provider(),
-                                                                                cur_tester.declare_tested_service(),
-                                                                                cur_test_start_timestamp,
-                                                                                cur_test_end_timestamp), tester_result))
-                report = SecurityReport(context=self.context, test_results=security_report_test_result_list)
-                print("DEBUG: Sent " + str(len(security_report_test_result_list)) + " events for " +
-                      str(testers_module_names[i]))
-                try:
-                    loop: AbstractEventLoop = asyncio.get_event_loop()
-                    loop.run_until_complete(
-                        self.client.post_security_report(api_key=self.private_key, security_report=report))
-                except Exception as ex:
-                    print("ERROR: Failed to send " + str(len(security_report_test_result_list)) + " for tester " +
-                          str(testers_module_names[i]) + " events due to the following exception: " + str(ex))
+                loop.run_until_complete(
+                    self.client.post_security_report(api_key=self.private_key, security_report=report))
+            except Exception as ex:
+                print("ERROR: Failed to send " + str(len(security_report_test_result_list)) + " for tester " +
+                      str(testers_module_names[i]) + " events due to the following exception: " + str(ex))
+            finally:
+                loop.close()
         self.channel.close()
