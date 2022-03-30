@@ -129,6 +129,4 @@ class AutoPostureEvaluator:
             except Exception as ex:
                 print("ERROR: Failed to send " + str(len(security_report_test_result_list)) + " for tester " +
                       str(testers_module_names[i]) + " events due to the following exception: " + str(ex))
-            finally:
-                loop.close()
         self.channel.close()
