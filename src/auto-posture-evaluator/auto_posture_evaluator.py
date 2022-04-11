@@ -60,12 +60,15 @@ class AutoPostureEvaluator:
         self.client = SecurityReportIngestionServiceStub(channel=self.channel)
         self.api_key = os.environ.get('API_KEY')
         self.tests = []
+        self.application_name = os.environ.get('APPLICATION_NAME', 'NO_APP_NAME')
+        self.subsystem_name = os.environ.get('SUBSYSTEM_NAME', 'NO_SUB_NAME')
         for tester_module in testers_module_names:
             if "Tester" in sys.modules[tester_module].__dict__:
                 self.tests.append(sys.modules[tester_module].__dict__["Tester"])
 
     def run_tests(self):
         execution_id = str(uuid.uuid4())
+
         for i in range(0, len(self.tests)):
             cur_test_start_timestamp = datetime.datetime.now()
             tester = self.tests[i]
@@ -112,9 +115,10 @@ class AutoPostureEvaluator:
                 provider=cur_tester.declare_tested_provider(),
                 service=cur_tester.declare_tested_service(),
                 execution_id=execution_id,
-                application_name=os.environ.get('APPLICATION_NAME', 'NO_APP_NAME'),
-                subsystem_name=os.environ.get('SUBSYSTEM_NAME', 'NO_SUB_NAME'),
-                computer_name="CoralogixServerlessLambda")
+                application_name=self.application_name,
+                computer_name="CoralogixServerlessLambda",
+                subsystem_name=self.subsystem_name
+            )
             report = SecurityReport(context=context, test_results=security_report_test_result_list)
             print("DEBUG: Sent " + str(len(security_report_test_result_list)) + " events for " +
                   str(testers_module_names[i]))

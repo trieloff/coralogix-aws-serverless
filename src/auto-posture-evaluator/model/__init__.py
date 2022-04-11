@@ -89,32 +89,4 @@ class SecurityReportIngestionServiceStub(betterproto.ServiceStub):
             metadata=[('authorization', api_key)]
         )
 
-
-class SecurityReportIngestionServiceBase(ServiceBase):
-    async def post_security_report(
-        self, security_report: "SecurityReport"
-    ) -> "PostSecurityReportResponse":
-        raise grpclib.GRPCError(grpclib.const.Status.UNIMPLEMENTED)
-
-    async def __rpc_post_security_report(self, stream: grpclib.server.Stream) -> None:
-        request = await stream.recv_message()
-
-        request_kwargs = {
-            "security_report": request.security_report,
-        }
-
-        response = await self.post_security_report(**request_kwargs)
-        await stream.send_message(response)
-
-    def __mapping__(self) -> Dict[str, grpclib.const.Handler]:
-        return {
-            "/com.coralogix.xdr.ingestion.v1.SecurityReportIngestionService/PostSecurityReport": grpclib.const.Handler(
-                self.__rpc_post_security_report,
-                grpclib.const.Cardinality.UNARY_UNARY,
-                PostSecurityReportRequest,
-                PostSecurityReportResponse,
-            ),
-        }
-
-
 import betterproto.lib.google.protobuf as betterproto_lib_google_protobuf
