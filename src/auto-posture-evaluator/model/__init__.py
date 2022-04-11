@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 import betterproto
+from betterproto.grpc.grpclib_server import ServiceBase
+import grpclib
 
 
 class SecurityReportTestResultResult(betterproto.Enum):
@@ -28,9 +30,6 @@ class SecurityReport(betterproto.Message):
 
 @dataclass(eq=False, repr=False)
 class SecurityReportContext(betterproto.Message):
-    private_key: Optional[str] = betterproto.message_field(
-        1, wraps=betterproto.TYPE_STRING
-    )
     application_name: Optional[str] = betterproto.message_field(
         2, wraps=betterproto.TYPE_STRING
     )
@@ -40,14 +39,17 @@ class SecurityReportContext(betterproto.Message):
     computer_name: Optional[str] = betterproto.message_field(
         4, wraps=betterproto.TYPE_STRING
     )
+    provider: Optional[str] = betterproto.message_field(
+        5, wraps=betterproto.TYPE_STRING
+    )
+    service: Optional[str] = betterproto.message_field(6, wraps=betterproto.TYPE_STRING)
+    execution_id: Optional[str] = betterproto.message_field(
+        7, wraps=betterproto.TYPE_STRING
+    )
 
 
 @dataclass(eq=False, repr=False)
 class SecurityReportTestResult(betterproto.Message):
-    provider: Optional[str] = betterproto.message_field(
-        1, wraps=betterproto.TYPE_STRING
-    )
-    service: Optional[str] = betterproto.message_field(2, wraps=betterproto.TYPE_STRING)
     name: Optional[str] = betterproto.message_field(3, wraps=betterproto.TYPE_STRING)
     start_time: datetime = betterproto.message_field(4)
     end_time: datetime = betterproto.message_field(5)
@@ -59,9 +61,6 @@ class SecurityReportTestResult(betterproto.Message):
     additional_data: Optional[
         "betterproto_lib_google_protobuf.Struct"
     ] = betterproto.message_field(9, optional=True, group="_additional_data")
-    execution_id: Optional[str] = betterproto.message_field(
-        10, wraps=betterproto.TYPE_STRING
-    )
 
 
 @dataclass(eq=False, repr=False)
@@ -76,7 +75,7 @@ class PostSecurityReportResponse(betterproto.Message):
 
 class SecurityReportIngestionServiceStub(betterproto.ServiceStub):
     async def post_security_report(
-            self, *, api_key: str, security_report: "SecurityReport" = None
+        self, *, api_key: str, security_report: "SecurityReport" = None
     ) -> "PostSecurityReportResponse":
 
         request = PostSecurityReportRequest()
@@ -84,11 +83,10 @@ class SecurityReportIngestionServiceStub(betterproto.ServiceStub):
             request.security_report = security_report
 
         return await self._unary_unary(
-            route="/com.coralogix.xdr.ingestion.v1.SecurityReportIngestionService/PostSecurityReport",
-            request=request,
-            response_type=PostSecurityReportResponse,
+            "/com.coralogix.xdr.ingestion.v1.SecurityReportIngestionService/PostSecurityReport",
+            request,
+            PostSecurityReportResponse,
             metadata=[('authorization', api_key)]
         )
-
 
 import betterproto.lib.google.protobuf as betterproto_lib_google_protobuf
