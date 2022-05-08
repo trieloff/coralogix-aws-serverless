@@ -30,7 +30,7 @@ else:
                 testers_module_names.append(module_name)
                 importlib.import_module(module_name)
             else:
-                print("The tester " + module_realpath+" does not exists")
+                print("The requested tester " + module + " is outside the expected path")
                 continue
 del module
 
