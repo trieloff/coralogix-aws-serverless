@@ -13,10 +13,11 @@ from model.helper import struct_from_dict
 
 
 testers_module_names = []
-for module in os.listdir(os.path.dirname(__file__) + '/testers'):
-    if module.startswith('_') or module[-3:] != '.py':
-        continue
-    module_name = "testers." + module[:-3]
+if not os.environ.get('TESTER_LIST'):
+    raise Exception("Missing the TESTER_LIST environment variable. CANNOT CONTINUE")
+tester_list = os.environ.get('TESTER_LIST').split(',')
+for module in tester_list:
+    module_name = "testers." + module + "_tester"
     testers_module_names.append(module_name)
     importlib.import_module(module_name)
 del module
