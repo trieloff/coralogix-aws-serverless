@@ -13,12 +13,25 @@ from model.helper import struct_from_dict
 
 
 testers_module_names = []
-for module in os.listdir(os.path.dirname(__file__) + '/testers'):
-    if module.startswith('_') or module[-3:] != '.py':
-        continue
-    module_name = "testers." + module[:-3]
-    testers_module_names.append(module_name)
-    importlib.import_module(module_name)
+if not os.environ.get('TESTER_LIST'):
+    for module in os.listdir(os.path.dirname(__file__) + '/testers'):
+        if module.startswith('_') or module[-3:] != '.py':
+            continue
+        module_name = "testers." + module[:-3]
+        testers_module_names.append(module_name)
+        importlib.import_module(module_name)
+else:
+    tester_list = os.environ.get('TESTER_LIST').split(',')
+    for module in tester_list:
+        if module:
+            module_realpath = os.path.realpath("testers/" + module + "_tester.py")
+            if module_realpath.startswith(os.path.dirname(__file__) + '/testers'):
+                module_name = "testers." + module + "_tester"
+                testers_module_names.append(module_name)
+                importlib.import_module(module_name)
+            else:
+                print("The requested tester " + module + " is outside the expected path")
+                continue
 del module
 
 
