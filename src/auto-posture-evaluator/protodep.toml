@@ -9,7 +9,7 @@ proto_outdir = "./temp"
 [[dependencies]]
   target = "github.com/googleapis/googleapis"
   branch = "master"
-  protoc = "ssh"
+  protocol = "ssh"
   includes = [
     "/google/api/http.proto",
     "/google/api/annotations.proto"
