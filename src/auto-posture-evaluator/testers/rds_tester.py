@@ -1,4 +1,6 @@
 import time
+from datetime import datetime, timezone
+
 import boto3
 import interfaces
 
@@ -35,7 +37,14 @@ class Tester(interfaces.TesterInterface):
         return self.detect_rds_instance_encrypted() + \
                self.detect_rds_instance_not_publicly_accessible() + \
                self.detect_rds_instance_not_using_default_port() + \
-               self.detect_rds_snapshot_not_publicly_accessible()
+               self.detect_rds_snapshot_not_publicly_accessible() + \
+               self.detect_rds_backup_retention_period_less_than_a_week() + \
+               self.detect_rds_instance_should_have_automatic_minor_version_upgrades_enabled() + \
+               self.detect_rds_instance_should_have_automated_backups_enabled() + \
+               self.detect_rds_transport_encryption_disabled() + \
+               self.detect_rds_public_cluster_manual_snapshots() + \
+               self.detect_rds_instance_level_events_subscriptions() + \
+               self.detect_rds_last_restorable_time_check_more_than_a_week_old()
 
     def _append_rds_test_result(self, rds, test_name, issue_status):
         return {
@@ -89,7 +98,7 @@ class Tester(interfaces.TesterInterface):
         result = []
         for rds in self.rds_instances['DBInstances']:
             default_db_engine_port = _return_default_port_on_rds_engines(rds['Engine'])
-            if default_db_engine_port == rds['Endpoint']['Port']:
+            if 'Endpoint' in rds and 'Port' in rds['Endpoint'] and default_db_engine_port == rds['Endpoint']['Port']:
                 result.append(self._append_rds_test_result(rds, test_name, "issue_found"))
             else:
                 result.append(self._append_rds_test_result(rds, test_name, "no_issue_found"))
@@ -109,4 +118,125 @@ class Tester(interfaces.TesterInterface):
                 result.append(self._append_rds_snap_test_result(rds_snap, test_name, "no_issue_found"))
         return result
 
+    def detect_rds_backup_retention_period_less_than_a_week(self):
+        result = []
+        test_name = "rds_backup_retention_period_less_than_a_week"
+        for rds_instance in self.rds_instances['DBInstances']:
+            if 'BackupRetentionPeriod' in rds_instance and rds_instance[
+                'BackupRetentionPeriod'] >= 7:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "no_issue_found"))
+            else:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "issue_found"))
+        return result
+
+    def detect_rds_instance_should_have_automatic_minor_version_upgrades_enabled(self):
+        result = []
+        test_name = "rds_instance_should_have_automatic_minor_version_upgrades_enabled"
+        for rds_instance in self.rds_instances['DBInstances']:
+            if 'AutoMinorVersionUpgrade' in rds_instance and rds_instance[
+                'AutoMinorVersionUpgrade']:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "no_issue_found"))
+            else:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "issue_found"))
+        return result
+
+    def detect_rds_instance_should_have_automated_backups_enabled(self):
+        result = []
+        test_name = "rds_instance_should_have_automated_backups_enabled"
+        for rds_instance in self.rds_instances['DBInstances']:
+            if 'BackupRetentionPeriod' in rds_instance and rds_instance[
+                'BackupRetentionPeriod'] > 0:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "no_issue_found"))
+            else:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "issue_found"))
+        return result
+
+    def detect_rds_transport_encryption_disabled(self):
+        result = []
+        test_name = "rds_transport_encryption_disabled"
+        for rds_instance in self.rds_instances['DBInstances']:
+            issue_found = True
+            for db_parameter_dict in rds_instance['DBParameterGroups']:
+                if 'DBParameterGroupName' in db_parameter_dict and db_parameter_dict['DBParameterGroupName']:
+                    if not issue_found:
+                        break
+                    response = self.aws_rds_client.describe_db_parameters(
+                        DBParameterGroupName=db_parameter_dict['DBParameterGroupName'])
+                    if response and 'Parameters' in response and response['Parameters']:
+                        for parameter_dict in response['Parameters']:
+                            if not issue_found:
+                                break
+                            if 'DBParameterGroupName' in parameter_dict and parameter_dict[
+                                'DBParameterGroupName'] == 'rds.force_ssl' and 'ParameterValue' in parameter_dict and str(
+                                parameter_dict['ParameterValue']) != '0':
+                                issue_found = False
+                                break
+            if issue_found:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "issue_found"))
+            else:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "no_issue_found"))
+
+        return result
+
+    def detect_rds_public_cluster_manual_snapshots(self):
+        result = []
+        test_name = "rds_public_cluster_manual_snapshots"
+        for rds_instance in self.rds_instances['DBInstances']:
+            response = self.aws_rds_client.describe_db_snapshots(
+                DBInstanceIdentifier=rds_instance['DBInstanceIdentifier'],
+                SnapshotType='manual')
+            issue_found = False
+            if 'DBSnapshots' in response and response['DBSnapshots']:
+                for db_snapshot_dict in response['DBSnapshots']:
+                    snapshot_attributes_response = self.aws_rds_client.describe_db_snapshot_attributes(
+                        DBSnapshotIdentifier=db_snapshot_dict['DBSnapshotIdentifier'])
+                    if 'DBSnapshotAttributesResult' in snapshot_attributes_response and 'DBSnapshotAttributes' in \
+                            snapshot_attributes_response['DBSnapshotAttributesResult']:
+                        for snapshot_attributes_response_dict in \
+                                snapshot_attributes_response['DBSnapshotAttributesResult']['DBSnapshotAttributes']:
+                            if 'AttributeName' in snapshot_attributes_response_dict and \
+                                    snapshot_attributes_response_dict[
+                                        'AttributeName'] == 'restore' and 'AttributeValues' in snapshot_attributes_response_dict and \
+                                    snapshot_attributes_response_dict['AttributeValues'] and \
+                                    snapshot_attributes_response_dict['AttributeValues'][0] == 'all':
+                                issue_found = True
+            if issue_found:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "issue_found"))
+            else:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "no_issue_found"))
+        return result
+
+    def detect_rds_instance_level_events_subscriptions(self):
+        result = []
+        test_name = "rds_instance_level_events_subscriptions"
+        event_subscription_response = self.aws_rds_client.describe_event_subscriptions()
+        subscribed_db_instances = []
+        is_all_instance_subscribed = False
+        for event_subscription_response_dict in event_subscription_response['EventSubscriptionsList']:
+            if event_subscription_response_dict['SourceType'] == 'db-instance':
+                if 'SourceIdsList' in event_subscription_response_dict and event_subscription_response_dict[
+                    'SourceIdsList']:
+                    subscribed_db_instances.extend(event_subscription_response_dict['SourceIdsList'])
+                else:
+                    is_all_instance_subscribed = True
+                    break
+        for rds_instance in self.rds_instances['DBInstances']:
+            if is_all_instance_subscribed or rds_instance['DBInstanceIdentifier'] in subscribed_db_instances:
+                result.append(
+                    self._append_rds_test_result(rds_instance, test_name, "no_issue_found"))
+            else:
+                result.append(
+                    self._append_rds_test_result(rds_instance, test_name, "issue_found"))
+        return result
+
+    def detect_rds_last_restorable_time_check_more_than_a_week_old(self):
+        result = []
+        test_name = "rds_last_restorable_time_check_more_than_a_week_old"
+        for rds_instance in self.rds_instances['DBInstances']:
+            if 'LatestRestorableTime' in rds_instance and rds_instance['LatestRestorableTime'] and (
+                    (datetime.now(timezone.utc) - rds_instance['LatestRestorableTime']).days) < 7:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "issue_found"))
+            else:
+                result.append(self._append_rds_test_result(rds_instance, test_name, "no_issue_found"))
+        return result
 
