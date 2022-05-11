@@ -10,6 +10,7 @@ It requires the following parameters:
 * **SubsystemName** - A mandatory metadata field that is sent with each log and helps to classify it.
 
 `S3KeyPrefix` and `S3KeySuffix` should be adjusted based on your configuration.
+`BlockingPattern` parameter optionally should contain regular expression for lines that should be excluded,
 
 Do not change the `FunctionMemorySize`, `FunctionTimeout` and `NewlinePattern` parameters. The application should be installed in the same AWS region as the S3 bucket.
 

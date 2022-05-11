@@ -6,7 +6,7 @@
  * @link        https://coralogix.com/
  * @copyright   Coralogix Ltd.
  * @licence     Apache-2.0
- * @version     1.0.12
+ * @version     1.0.17
  * @since       1.0.0
  */
 
@@ -22,6 +22,7 @@ const s3 = new aws.S3();
 // Check Lambda function parameters
 assert(process.env.private_key, "No private key!");
 const newlinePattern = process.env.newline_pattern ? RegExp(process.env.newline_pattern) : /(?:\r\n|\r|\n)/g;
+const blockingPattern = process.env.blocking_pattern ? RegExp(process.env.blocking_pattern) : null;
 const sampling = process.env.sampling ? parseInt(process.env.sampling) : 1;
 const debug = JSON.parse(process.env.debug || false);
 
@@ -42,6 +43,7 @@ function sendLogs(content, filename) {
 
     for (let i = 0; i < logs.length; i += sampling) {
         if (!logs[i]) continue;
+        if (blockingPattern && logs[i].match(blockingPattern)) continue;
         let appName = process.env.app_name || "NO_APPLICATION";
         let subName = process.env.sub_name || "NO_SUBSYSTEM";
 

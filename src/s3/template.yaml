@@ -14,7 +14,7 @@ Metadata:
       - logs
       - s3
     HomePageUrl: https://coralogix.com
-    SemanticVersion: 1.0.12
+    SemanticVersion: 1.0.17
     SourceCodeUrl: https://github.com/coralogix/coralogix-aws-serverless
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -109,6 +109,10 @@ Parameters:
     Type: String
     Description: The pattern for lines splitting
     Default: '(?:\r\n|\r|\n)'
+  BlockingPattern:
+    Type: String
+    Description: The pattern for lines blocking
+    Default: ''
   SamplingRate:
     Type: Number
     Description: Send messages with specific rate
@@ -215,6 +219,8 @@ Resources:
             Ref: SubsystemName
           newline_pattern:
             Ref: NewlinePattern
+          blocking_pattern:
+            Ref: BlockingPattern
           sampling:
             Ref: SamplingRate
           debug:
