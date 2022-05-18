@@ -20,7 +20,7 @@ class Tester(interfaces.TesterInterface):
         self.aws_nfw_client = boto3.client('network-firewall')
         self.sensitive_instance_tag = os.environ.get('AUTOPOSTURE_EC2_SENSITIVE_TAG')
         self.per_region_max_cpu_count_diff = os.environ.get('AUTOPOSTURE_PER_REGION_MAX_CPU_COUNT_DIFF')
-
+   
     def declare_tested_service(self) -> str:
         return 'ec2'
 
@@ -202,11 +202,15 @@ class Tester(interfaces.TesterInterface):
         instances = []
         NAMERESPORT = 137
         SESSIONPORT = 139
+        DATAGRAMPORT = 138
+
         instancse_137 = list(map(lambda i: i['security_group'].id, list(filter(lambda permission: (permission['IpProtocol'] == '-1') or ((permission['FromPort'] <= NAMERESPORT and permission['ToPort'] >= NAMERESPORT) and permission['IpProtocol'] == 'tcp'), all_inbound_permissions))))
         instances.extend(instancse_137)
         instancse_139 = list(map(lambda i: i['security_group'].id, list(filter(lambda permission: (permission['IpProtocol'] == '-1') or ((permission['FromPort'] <= SESSIONPORT and permission['ToPort'] >= SESSIONPORT) and permission['IpProtocol'] == 'tcp'), all_inbound_permissions))))
         instances.extend(instancse_139)
-        
+        instances_138 = list(map(lambda i: i['security_group'].id, list(filter(lambda permission: (permission['IpProtocol'] == '-1') or ((permission['FromPort'] <= DATAGRAMPORT and permission['ToPort'] >= DATAGRAMPORT) and permission['IpProtocol'] == 'tcp'), all_inbound_permissions))))
+        instances.extend(instances_138)
+
         instances_with_issue = set(instances)
         instances_with_no_issue = self.set_security_group.difference(instances_with_issue)
 
@@ -344,12 +348,15 @@ class Tester(interfaces.TesterInterface):
         instances = []
         NAMERESPORT = 137
         DATAGRAMPORT = 138
-        
+        SESSIONPORT = 139
+
         instancse_137 = list(map(lambda i: i['security_group'].id, list(filter(lambda permission: (permission['IpProtocol'] == '-1') or ((permission['FromPort'] <= NAMERESPORT and permission['ToPort'] >= NAMERESPORT) and permission['IpProtocol'] == 'udp'), all_inbound_permissions))))
         instances.extend(instancse_137)
         instancse_138 = list(map(lambda i: i['security_group'].id, list(filter(lambda permission: (permission['IpProtocol'] == '-1') or ((permission['FromPort'] <= DATAGRAMPORT and permission['ToPort'] >= DATAGRAMPORT) and permission['IpProtocol'] == 'udp'), all_inbound_permissions))))
         instances.extend(instancse_138)
-        
+        instance_139 = list(map(lambda i: i['security_group'].id, list(filter(lambda permission: (permission['IpProtocol'] == '-1') or ((permission['FromPort'] <= SESSIONPORT and permission['ToPort'] >= SESSIONPORT) and permission['IpProtocol'] == 'udp'), all_inbound_permissions))))
+        instances.extend(instance_139)
+
         instances_with_issue = set(instances)
         instances_with_no_issue = self.set_security_group.difference(instances_with_issue)
 
@@ -441,7 +448,7 @@ class Tester(interfaces.TesterInterface):
     def get_inbound_icmp_access(self, all_inbound_permissions):
         test_name = "ec2_inbound_icmp_access_restricted"
         result = []
-        instances = list(map(lambda i: i['security_group'].id, list(filter(lambda permission: permission['IpProtocol'] == "icmp" or permission['IpProtocol'] == "-1", all_inbound_permissions))))
+        instances = list(map(lambda i: i['security_group'].id, list(filter(lambda permission: permission['IpProtocol'] == "icmp" or permission['IpProtocol'] == "-1" or permission['IpProtocol'] == "icmpv6", all_inbound_permissions))))
         instances_with_issue = set(instances)
         instances_with_no_issue = self.set_security_group.difference(instances_with_issue)
         for i in instances_with_issue:
@@ -517,7 +524,11 @@ class Tester(interfaces.TesterInterface):
         results = []
         instances = []
         PORT1024 = 1024
-        instances_1024 = list(map(lambda i: i['security_group'].id, list(filter(lambda permission: (permission['IpProtocol'] == '-1') or ((permission['FromPort'] > PORT1024 and permission['ToPort'] > PORT1024) and any([range.get('CidrIp', '') == '0.0.0.0/0' or range.get('CidrIp', '') == '::/0' for range in permission['IpRanges']])), all_inbound_permissions))))
+        HISHESTPORT = 65535
+        instances_1024 = list(map(lambda i: i['security_group'].id, list(filter(lambda permission: (permission['IpProtocol'] == '-1') or 
+                ((permission['FromPort'] >= PORT1024 and permission['ToPort'] <= HISHESTPORT) and 
+                (any([range.get('CidrIp', '') == '0.0.0.0/0' or range.get('CidrIp', '') == '::/0' for range in permission['IpRanges']]) or 
+                any([range.get('CidrIpv6', '') == '::/0' for range in permission['Ipv6Ranges']]))), all_inbound_permissions))))
 
         instances.extend(instances_1024)
 
