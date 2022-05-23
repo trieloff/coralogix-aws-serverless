@@ -1,7 +1,7 @@
 import time
 import boto3
 import interfaces
-import json
+import json, re
 
 
 def _format_string_to_json(text):
@@ -44,15 +44,16 @@ class Tester(interfaces.TesterInterface):
     def run_tests(self) -> list:
         return self.detect_sns_has_restrictions_set_for_publishing() + \
                self.detect_sns_has_restrictions_set_for_subscription() + \
-               self.detect_sns_topic_has_encryption_enabled()
+               self.detect_sns_topic_has_encryption_enabled() + \
+               self.detect_sns_cross_account_access()
 
-    def _append_sns_test_result(self, sns_detail, is_topic, test_name, issue_status):
+    def _append_sns_test_result(self, topic_arn, test_name, issue_status):
         return {
             "user": self.user_id,
             "account_arn": self.account_arn,
             "account": self.account_id,
             "timestamp": time.time(),
-            "item": is_topic and sns_detail + " Topic" or sns_detail + "Subscription",
+            "item": topic_arn,
             "item_type": "sns",
             "test_name": test_name,
             "test_result": issue_status
@@ -92,9 +93,9 @@ class Tester(interfaces.TesterInterface):
             else:
                 continue
             if not _check_sns_restriction_enabled(response['Policy'], is_topic):
-                result.append(self._append_sns_test_result(response['DisplayName'], True, test_name, "issue_found"))
+                result.append(self._append_sns_test_result(topic['TopicArn'], test_name, "issue_found"))
             else:
-                result.append(self._append_sns_test_result(response['DisplayName'], True, test_name, "no_issue_found"))
+                result.append(self._append_sns_test_result(topic['TopicArn'], test_name, "no_issue_found"))
         return result
 
     def detect_sns_has_restrictions_set_for_publishing(self):
@@ -118,10 +119,54 @@ class Tester(interfaces.TesterInterface):
             else:
                 continue
             if 'KmsMasterKeyId' in response and not response['KmsMasterKeyId']:
-                result.append(self._append_sns_test_result(response['DisplayName'], True, test_name, "issue_found"))
+                result.append(self._append_sns_test_result(topic['TopicArn'], test_name, "issue_found"))
             elif 'KmsMasterKeyId' not in response:
-                result.append(self._append_sns_test_result(response['DisplayName'], True, test_name, "issue_found"))
+                result.append(self._append_sns_test_result(topic['TopicArn'], test_name, "issue_found"))
             else:
-                result.append(self._append_sns_test_result(response['DisplayName'], True, test_name, "no_issue_found"))
+                result.append(self._append_sns_test_result(topic['TopicArn'], test_name, "no_issue_found"))
+        return result
+
+    def detect_sns_cross_account_access(self):
+        test_name = "sns_cross_account_access"
+        result = []
+        client_organizations = boto3.client('organizations')
+        try:
+            resp = client_organizations.list_accounts()
+            all_account_obj = ['Accounts'] in resp and resp['Accounts'] or []
+            all_accounts = []
+            for accounts_dict in all_account_obj:
+                all_accounts.append(accounts_dict)
+            if not all_accounts:
+                all_accounts = [self.account_id]
+        except:
+            all_accounts = [self.account_id]
+        for topic in self._return_all_the_topic_arns():
+            response = self.aws_sns_client.get_topic_attributes(
+                TopicArn=topic['TopicArn']
+            )
+            issue_found = False
+            if 'Attributes' in response and response['Attributes'] and 'Policy' in response['Attributes']:
+                policy_dict = _format_string_to_json(response['Attributes']['Policy'])
+                if 'Statement' in policy_dict and policy_dict['Statement']:
+                    for statement_dict in policy_dict['Statement']:
+                        if 'Principal' in statement_dict and statement_dict[
+                            'Principal'] == '*' or 'Principal' in statement_dict and 'AWS' in \
+                                statement_dict['Principal'] and statement_dict['Principal']['AWS'] == '*':
+                            issue_found = True
+                            break
+                        if 'Principal' in statement_dict and 'AWS' in \
+                                statement_dict['Principal'] and statement_dict['Principal']['AWS']:
+                            try:
+                                account_id_to_compare = (
+                                    re.search(r'\b\d{12}\b', statement_dict['Principal']['AWS'])).group(0)
+                                if account_id_to_compare not in all_accounts:
+                                    issue_found = True
+                                    break
+                            except:
+                                pass
+            if issue_found:
+                result.append(self._append_sns_test_result(topic['TopicArn'], test_name, "issue_found"))
+            else:
+                result.append(self._append_sns_test_result(topic['TopicArn'], test_name, "no_issue_found"))
         return result
 
