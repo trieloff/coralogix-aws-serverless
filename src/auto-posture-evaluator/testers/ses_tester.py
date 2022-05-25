@@ -55,7 +55,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_ses_domain_identity_should_be_verified(self):
         dkim_result = []
-        test_name = 'ses_domain_identity_should_be_verified'
+        test_name = 'aws_ses_domain_identity_should_be_verified'
         dkim_attributes_res = self.aws_ses_client.get_identity_dkim_attributes(Identities=self.all_ses_identities)
         if dkim_attributes_res and 'DkimAttributes' in dkim_attributes_res and dkim_attributes_res[
             'DkimAttributes']:
@@ -70,7 +70,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_ses_exposed_ses_identities(self):
         ses_policy_result = []
-        test_name = 'ses_exposed_ses_identities'
+        test_name = 'aws_ses_exposed_ses_identities'
         for domain_identity in self._return_all_ses_identities(all=True):
             ses_policies = self.aws_ses_client.list_identity_policies(Identity=domain_identity)
             issue_found = False
@@ -103,7 +103,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_ses_domain_identity_should_use_dkim_signatures(self):
         dkim_signature_result = []
-        test_name = 'ses_domain_identity_should_use_dkim_signatures'
+        test_name = 'aws_ses_domain_identity_should_use_dkim_signatures'
         dkim_attributes_res = self.aws_ses_client.get_identity_dkim_attributes(Identities=self.all_ses_identities)
         if dkim_attributes_res and 'DkimAttributes' in dkim_attributes_res and dkim_attributes_res[
             'DkimAttributes']:
