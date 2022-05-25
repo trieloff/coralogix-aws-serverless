@@ -99,15 +99,15 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_sns_has_restrictions_set_for_publishing(self):
-        test_name = "sns_has_restrictions_set_for_publishing"
+        test_name = "aws_sns_has_restrictions_set_for_publishing"
         return self._restriction_check_on_topics(True, test_name)
 
     def detect_sns_has_restrictions_set_for_subscription(self):
-        test_name = "sns_has_restrictions_set_for_subscription"
+        test_name = "aws_sns_has_restrictions_set_for_subscription"
         return self._restriction_check_on_topics(False, test_name)
 
     def detect_sns_topic_has_encryption_enabled(self):
-        test_name = "sns_topic_has_encryption_enabled"
+        test_name = "aws_sns_topic_has_encryption_enabled"
         result = []
         topic_arns = self._return_all_the_topic_arns()
         for topic in topic_arns:
@@ -127,7 +127,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_sns_cross_account_access(self):
-        test_name = "sns_cross_account_access"
+        test_name = "aws_sns_cross_account_access"
         result = []
         client_organizations = boto3.client('organizations')
         try:
