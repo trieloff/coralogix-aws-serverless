@@ -74,7 +74,7 @@ class Tester(interfaces.TesterInterface):
         return self.aws_rds_client.describe_db_snapshot_attributes(DBSnapshotIdentifier=snapshot_identifier)
 
     def detect_rds_instance_encrypted(self):
-        test_name = "encrypted_rds_db_instances"
+        test_name = "aws_rds_encrypted_rds_db_instances"
         result = []
         for rds in self.rds_instances['DBInstances']:
             if not rds['StorageEncrypted']:
@@ -84,7 +84,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_rds_instance_not_publicly_accessible(self):
-        test_name = "not_publicly_accessible_rds_db_instances"
+        test_name = "aws_rds_not_publicly_accessible_rds_db_instances"
         result = []
         for rds in self.rds_instances['DBInstances']:
             if rds['PubliclyAccessible']:
@@ -94,7 +94,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_rds_instance_not_using_default_port(self):
-        test_name = "rds_db_instances_not_using_default_port"
+        test_name = "aws_rds_db_instances_not_using_default_port"
         result = []
         for rds in self.rds_instances['DBInstances']:
             default_db_engine_port = _return_default_port_on_rds_engines(rds['Engine'])
@@ -105,7 +105,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_rds_snapshot_not_publicly_accessible(self):
-        test_name = "rds_snapshot_not_publicly_accessible"
+        test_name = "aws_rds_snapshot_not_publicly_accessible"
         result = []
         for rds_snap in self.rds_snapshots['DBSnapshots']:
             issue_found = False
@@ -120,7 +120,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_rds_backup_retention_period_less_than_a_week(self):
         result = []
-        test_name = "rds_backup_retention_period_less_than_a_week"
+        test_name = "aws_rds_backup_retention_period_less_than_a_week"
         for rds_instance in self.rds_instances['DBInstances']:
             if 'BackupRetentionPeriod' in rds_instance and rds_instance[
                 'BackupRetentionPeriod'] >= 7:
@@ -131,7 +131,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_rds_instance_should_have_automatic_minor_version_upgrades_enabled(self):
         result = []
-        test_name = "rds_instance_should_have_automatic_minor_version_upgrades_enabled"
+        test_name = "aws_rds_instance_should_have_automatic_minor_version_upgrades_enabled"
         for rds_instance in self.rds_instances['DBInstances']:
             if 'AutoMinorVersionUpgrade' in rds_instance and rds_instance[
                 'AutoMinorVersionUpgrade']:
@@ -142,7 +142,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_rds_instance_should_have_automated_backups_enabled(self):
         result = []
-        test_name = "rds_instance_should_have_automated_backups_enabled"
+        test_name = "aws_rds_instance_should_have_automated_backups_enabled"
         for rds_instance in self.rds_instances['DBInstances']:
             if 'BackupRetentionPeriod' in rds_instance and rds_instance[
                 'BackupRetentionPeriod'] > 0:
@@ -153,7 +153,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_rds_transport_encryption_disabled(self):
         result = []
-        test_name = "rds_transport_encryption_disabled"
+        test_name = "aws_rds_transport_encryption_disabled"
         for rds_instance in self.rds_instances['DBInstances']:
             issue_found = True
             for db_parameter_dict in rds_instance['DBParameterGroups']:
@@ -180,7 +180,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_rds_public_cluster_manual_snapshots(self):
         result = []
-        test_name = "rds_public_cluster_manual_snapshots"
+        test_name = "aws_rds_public_cluster_manual_snapshots"
         for rds_instance in self.rds_instances['DBInstances']:
             response = self.aws_rds_client.describe_db_snapshots(
                 DBInstanceIdentifier=rds_instance['DBInstanceIdentifier'],
@@ -208,7 +208,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_rds_instance_level_events_subscriptions(self):
         result = []
-        test_name = "rds_instance_level_events_subscriptions"
+        test_name = "aws_rds_instance_level_events_subscriptions"
         event_subscription_response = self.aws_rds_client.describe_event_subscriptions()
         subscribed_db_instances = []
         is_all_instance_subscribed = False
@@ -231,7 +231,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_rds_last_restorable_time_check_more_than_a_week_old(self):
         result = []
-        test_name = "rds_last_restorable_time_check_more_than_a_week_old"
+        test_name = "aws_rds_last_restorable_time_check_more_than_a_week_old"
         for rds_instance in self.rds_instances['DBInstances']:
             if 'LatestRestorableTime' in rds_instance and rds_instance['LatestRestorableTime'] and (
                     (datetime.now(timezone.utc) - rds_instance['LatestRestorableTime']).days) < 7:
