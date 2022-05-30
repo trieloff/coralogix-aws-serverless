@@ -69,7 +69,7 @@ class Tester(interfaces.TesterInterface):
         return ssl_enabled
 
     def detect_redshift_cluster_encrypted(self):
-        test_name = "encrypted_redshift_cluster"
+        test_name = "aws_redshift_encrypted_redshift_cluster"
         result = []
         for redshift in self.redshift_clusters['Clusters']:
             if not redshift['Encrypted']:
@@ -79,7 +79,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_redshift_cluster_not_publicly_accessible(self):
-        test_name = "not_publicly_accessible_redshift_cluster"
+        test_name = "aws_redshift_not_publicly_accessible_redshift_cluster"
         result = []
         for redshift in self.redshift_clusters['Clusters']:
             if redshift['PubliclyAccessible']:
@@ -89,7 +89,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_redshift_cluster_not_using_default_port(self):
-        test_name = "redshift_cluster_not_using_default_port"
+        test_name = "aws_redshift_cluster_not_using_default_port"
         result = []
         for redshift in self.redshift_clusters['Clusters']:
             if _return_default_port_on_redshift_engines() == redshift['Endpoint']['Port']:
@@ -99,7 +99,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_redshift_cluster_not_using_custom_master_username(self):
-        test_name = "redshift_cluster_not_using_custom_master_username"
+        test_name = "aws_redshift_cluster_not_using_custom_master_username"
         result = []
         for redshift in self.redshift_clusters['Clusters']:
             if _return_default_custom_master_username_on_redshift_engines() == redshift['MasterUsername'].lower():
@@ -109,7 +109,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_redshift_cluster_using_logging(self):
-        test_name = "redshift_cluster_using_logging"
+        test_name = "aws_redshift_cluster_using_logging"
         result = []
         for redshift in self.redshift_clusters['Clusters']:
             logging_metadata = self._return_redshift_logging_status(redshift['ClusterIdentifier'])
@@ -120,7 +120,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_redshift_cluster_allow_version_upgrade(self):
-        test_name = "redshift_cluster_allow_version_upgrade"
+        test_name = "aws_redshift_cluster_allow_version_upgrade"
         result = []
         for redshift in self.redshift_clusters['Clusters']:
             if not redshift['AllowVersionUpgrade']:
@@ -130,7 +130,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_redshift_cluster_requires_ssl(self):
-        test_name = "redshift_cluster_requires_ssl"
+        test_name = "aws_redshift_cluster_requires_ssl"
         result = []
         for redshift in self.redshift_clusters['Clusters']:
             issue_found = True
@@ -146,7 +146,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_redshift_cluster_not_using_ec2_classic(self):
-        test_name = "redshift_cluster_not_using_ec2_classic"
+        test_name = "aws_redshift_cluster_not_using_ec2_classic"
         result = []
         for redshift in self.redshift_clusters['Clusters']:
             if not ('VpcId' in redshift and redshift['VpcId']):
