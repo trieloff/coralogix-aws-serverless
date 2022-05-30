@@ -66,19 +66,21 @@ class Tester(interfaces.TesterInterface):
 
     def detect_waf_enabled_disabled_distribution(self):
         waf_result = []
+        test_name = 'aws_cloudfront_distribution_id_associated_with_a_waf_web_acl'
         for items_dict in self.all_cloud_front_details:
             if 'WebACLId' in items_dict and items_dict['WebACLId']:
                 waf_result.append(self._append_cloudfront_test_result(items_dict['Id'],
-                                                                      'detect_distribution_id_associated_with_a_waf_web_acl',
+                                                                      test_name,
                                                                       'no_issue_found'))
             else:
                 waf_result.append(self._append_cloudfront_test_result(items_dict['Id'],
-                                                                      'detect_distribution_id_associated_with_a_waf_web_acl',
+                                                                      test_name,
                                                                       'issue_found'))
         return waf_result
 
     def detect_unencrypted_cloudfront_to_origin_server_connection(self):
         protocol_result = []
+        test_name = 'aws_cloudfront_unencrypted_cloudfront_to_origin_server_connection'
         for items_dict in self.all_cloud_front_details:
             issue_found = False
             for item_data_dict in items_dict['Origins']['Items']:
@@ -89,16 +91,17 @@ class Tester(interfaces.TesterInterface):
                     break
             if issue_found:
                 protocol_result.append(self._append_cloudfront_test_result(items_dict['Id'],
-                                                                           'unencrypted_cloudfront_to_origin_server_connection',
+                                                                           test_name,
                                                                            'issue_found'))
             else:
                 protocol_result.append(self._append_cloudfront_test_result(items_dict['Id'],
-                                                                           'unencrypted_cloudfront_to_origin_server_connection',
+                                                                           test_name,
                                                                            'no_issue_found'))
         return protocol_result
 
     def detect_encrypted_data_in_transit_using_tls_higher_version(self):
         tls_protocol_version_result = []
+        test_name = 'aws_cloudfront_ensure_encrypted_data_in_transit_using_tls_1.2_protocol_or_higher'
         for items_dict in self.all_cloud_front_details:
 
             if 'ViewerCertificate' in items_dict and items_dict['ViewerCertificate'] and 'MinimumProtocolVersion' in \
@@ -109,32 +112,33 @@ class Tester(interfaces.TesterInterface):
                 'TLSv1.2_2021'
             ]:
                 tls_protocol_version_result.append(self._append_cloudfront_test_result(items_dict['Id'],
-                                                                                       'ensure_encrypted_data_in_transit_using_tls_1.2_protocol_or_higher',
+                                                                                       test_name,
                                                                                        'issue_found'))
             else:
                 tls_protocol_version_result.append(self._append_cloudfront_test_result(items_dict['Id'],
-                                                                                       'ensure_encrypted_data_in_transit_using_tls_1.2_protocol_or_higher',
+                                                                                       test_name,
                                                                                        'no_issue_found'))
         return tls_protocol_version_result
 
     def detect_unencrypted_cloudfront_to_viewer_connection(self):
         viewer_protocol_result = []
+        test_name = 'aws_cloudfront_unencrypted_cloudfront_to_viewer_connection'
         for items_dict in self.all_cloud_front_details:
             if 'ViewerProtocolPolicy' in items_dict['DefaultCacheBehavior'] and items_dict['DefaultCacheBehavior'][
                 'ViewerProtocolPolicy'] in ['allow-all',
                                             'redirect-to-https']:
                 viewer_protocol_result.append(self._append_cloudfront_test_result(items_dict['Id'],
-                                                                                  'unencrypted_cloudfront_to_viewer_connection',
+                                                                                  test_name,
                                                                                   'issue_found'))
             else:
                 viewer_protocol_result.append(self._append_cloudfront_test_result(items_dict['Id'],
-                                                                                  'unencrypted_cloudfront_to_viewer_connection',
+                                                                                  test_name,
                                                                                   'no_issue_found'))
         return viewer_protocol_result
 
     def detect_cloudfront_enable_origin_access_identity_for_cloudfront_distributions_with_s3_origin(self):
         result = []
-        test_name = 'enable_origin_access_identity_for_cloudfront_distributions_with_s3_origin'
+        test_name = 'aws_cloudfront_enable_origin_access_identity_for_cloudfront_distributions_with_s3_origin'
         for items_dict in self.all_cloud_front_details:
             issue_found = False
             if 'Origins' in items_dict and 'Items' in items_dict['Origins'] and items_dict['Origins']['Items']:
