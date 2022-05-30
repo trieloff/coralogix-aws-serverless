@@ -22,7 +22,7 @@ class Tester(interfaces.TesterInterface):
 
     def declare_tested_provider(self) -> str:
         return 'aws'
-    
+
     def run_tests(self) -> list:
         self.ebs_volumes = self._get_ebs_volumes()
         return \
@@ -35,7 +35,7 @@ class Tester(interfaces.TesterInterface):
     def _get_ebs_volumes(self):
         volumes = []
         can_paginate = self.aws_ec2_client.can_paginate('describe_volumes')
-        
+
         if can_paginate:
             paginator = self.aws_ec2_client.get_paginator('describe_volumes')
             response_iterator = paginator.paginate(PaginationConfig={'PageSize': 50})
@@ -48,7 +48,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_volume_is_not_encrypted(self, volumes) -> List:
         result = []
-        test_name = "volume_is_not_encrypted"
+        test_name = "aws_ebs_volume_is_not_encrypted"
 
         for volume in volumes:
             volume_id = volume['VolumeId']
@@ -74,12 +74,12 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "no_issue_found"
                 })
-        
+
         return result
 
     def get_volume_attached_to_ec2(self, volumes):
         result = []
-        test_name = "volume_attached_to_ec2"
+        test_name = "aws_ebs_volume_attached_to_ec2"
 
         for volume in volumes:
             volume_id = volume['VolumeId']
@@ -106,13 +106,13 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "no_issue_found"
                 })
-        
+
         return result
-    
+
     def get_volume_does_not_have_recent_snapshots(self, volumes):
         result = []
-        test_name = "volume_does_not_have_recent_snapshots"
-        
+        test_name = "aws_ebs_volume_does_not_have_recent_snapshots"
+
         for volume in volumes:
             snapshots = []
             volume_id = volume['VolumeId']
@@ -160,8 +160,8 @@ class Tester(interfaces.TesterInterface):
 
     def get_volume_not_encrypted_with_kms_customer_keys(self, volumes):
         result = []
-        test_name = "volume_not_encrypted_with_kms_customer_keys"
-        
+        test_name = "aws_ebs_volume_not_encrypted_with_kms_customer_keys"
+
         for volume in volumes:
             volume_id = volume['VolumeId']
             if not volume['Encrypted'] or not volume['KmsKeyId']:
@@ -182,7 +182,7 @@ class Tester(interfaces.TesterInterface):
                 for alias in kms_response['Aliases']:
                     if alias['AliasName'] == 'alias/aws/ebs':
                         issue_found = True
-                        break                    
+                        break
                 if not issue_found:
                     result.append({
                         "user": self.user_id,
@@ -208,10 +208,10 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def get_volume_snapshots_are_public(self):
-        test_name = "volume_snapshots_are_public"
+        test_name = "aws_ebs_volume_snapshots_are_public"
         result = []
         snapshots = self.aws_ec2_client.describe_snapshots(OwnerIds=[self.account_id], Filters=[{"Name": "status", "Values":["completed"]}])
-        
+
         for snapshot in snapshots["Snapshots"]:
             snapshot_id = snapshot["SnapshotId"]
             attrs = self.aws_ec2_client.describe_snapshot_attribute(SnapshotId=snapshot_id, Attribute="createVolumePermission")
@@ -238,3 +238,4 @@ class Tester(interfaces.TesterInterface):
                     "test_result": "no_issue_found"
                 })
         return result
+
