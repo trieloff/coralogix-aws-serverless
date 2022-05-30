@@ -63,7 +63,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_dms_endpoint_should_use_ssl(self):
         ssl_endpoint_result = []
-        test_name = 'dms_endpoint_should_use_ssl'
+        test_name = 'aws_dms_endpoint_should_use_ssl'
         for dms_replica_instance_dict in self.all_dms_replica_instances:
             dms_connection_response = self.aws_dms_client.describe_connections(Filters=[
                 {
@@ -94,7 +94,7 @@ class Tester(interfaces.TesterInterface):
     def detect_dms_certificate_is_not_expired(self):
         dms_certificates = self._return_all_dms_certificates()
         issue_found = False
-        test_name = 'dms_certificate_is_not_expired'
+        test_name = 'aws_dms_certificate_is_not_expired'
         if not dms_certificates:
             issue_found = True
         for dms_certificate_dict in dms_certificates:
@@ -108,7 +108,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_dms_replication_instance_should_not_be_publicly_accessible(self):
         dms_public_accessible = []
-        test_name = 'dms_replication_instance_should_not_be_publicly_accessible'
+        test_name = 'aws_dms_replication_instance_should_not_be_publicly_accessible'
         for dms_replica_instance_dict in self.all_dms_replica_instances:
             if dms_replica_instance_dict['PubliclyAccessible']:
                 dms_public_accessible.append(
