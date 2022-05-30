@@ -51,6 +51,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_not_encrypted_with_sse_kms(self):
         result = []
+        test_name = 'aws_cloudtrail_not_encrypted_with_sse_kms'
         for cloud_trail_dict in self.all_cloudtrail_details:
             response = self.aws_cloudtrail_client.describe_trails(
                 trailNameList=[
@@ -61,17 +62,18 @@ class Tester(interfaces.TesterInterface):
                 if 'KmsKeyId' in trail_list_dict and trail_list_dict['KmsKeyId']:
                     result.append(
                         self._append_cloudtrail_test_result(trail_list_dict['TrailARN'],
-                                                            'cloudtrail_not_encrypted_with_sse_kms',
+                                                            test_name,
                                                             'no_issue_found'))
                 else:
                     result.append(
                         self._append_cloudtrail_test_result(trail_list_dict['TrailARN'],
-                                                            'cloudtrail_not_encrypted_with_sse_kms',
+                                                            test_name,
                                                             'issue_found'))
         return result
 
     def detect_not_integrated_with_cloudwatch(self):
         result = []
+        test_name = 'aws_cloudtrail_not_integrated_with_cloudwatch'
         for cloud_trail_dict in self.all_cloudtrail_details:
             response = self.aws_cloudtrail_client.describe_trails(
                 trailNameList=[
@@ -82,17 +84,18 @@ class Tester(interfaces.TesterInterface):
                 if 'CloudWatchLogsLogGroupArn' in trail_list_dict and trail_list_dict['CloudWatchLogsLogGroupArn']:
                     result.append(
                         self._append_cloudtrail_test_result(trail_list_dict['TrailARN'],
-                                                            'cloudtrail_not_integrated_with_cloudwatch',
+                                                            test_name,
                                                             'no_issue_found'))
                 else:
                     result.append(
                         self._append_cloudtrail_test_result(trail_list_dict['TrailARN'],
-                                                            'cloudtrail_not_integrated_with_cloudwatch',
+                                                            test_name,
                                                             'issue_found'))
         return result
 
     def detect_global_service(self):
         result = []
+        test_name = 'aws_cloudtrail_global_services_are_enabled'
         for cloud_trail_dict in self.all_cloudtrail_details:
             response = self.aws_cloudtrail_client.describe_trails(
                 trailNameList=[
@@ -103,17 +106,18 @@ class Tester(interfaces.TesterInterface):
                 if 'IncludeGlobalServiceEvents' in trail_list_dict and trail_list_dict['IncludeGlobalServiceEvents']:
                     result.append(
                         self._append_cloudtrail_test_result(trail_list_dict['TrailARN'],
-                                                            'cloudtrail_global_services_are_enabled',
+                                                            test_name,
                                                             'no_issue_found'))
                 else:
                     result.append(
                         self._append_cloudtrail_test_result(trail_list_dict['TrailARN'],
-                                                            'cloudtrail_global_services_are_enabled',
+                                                            test_name,
                                                             'issue_found'))
         return result
 
     def detect_log_validation(self):
         result = []
+        test_name = 'aws_cloudtrail_log_file_validation_is_enabled'
         for cloud_trail_dict in self.all_cloudtrail_details:
             response = self.aws_cloudtrail_client.describe_trails(
                 trailNameList=[
@@ -124,17 +128,18 @@ class Tester(interfaces.TesterInterface):
                 if 'LogFileValidationEnabled' in trail_list_dict and trail_list_dict['LogFileValidationEnabled']:
                     result.append(
                         self._append_cloudtrail_test_result(trail_list_dict['TrailARN'],
-                                                            'cloudtrail_log_file_validation_is_enabled',
+                                                            test_name,
                                                             'no_issue_found'))
                 else:
                     result.append(
                         self._append_cloudtrail_test_result(trail_list_dict['TrailARN'],
-                                                            'cloudtrail_log_file_validation_is_enabled',
+                                                            test_name,
                                                             'issue_found'))
         return result
 
     def detect_multi_region_trails(self):
         result = []
+        test_name = 'aws_cloudtrail_multi_region_is_enabled'
         for cloud_trail_dict in self.all_cloudtrail_details:
             response = self.aws_cloudtrail_client.describe_trails(
                 trailNameList=[
@@ -145,12 +150,12 @@ class Tester(interfaces.TesterInterface):
                 if 'IsMultiRegionTrail' in trail_list_dict and trail_list_dict['IsMultiRegionTrail']:
                     result.append(
                         self._append_cloudtrail_test_result(trail_list_dict['TrailARN'],
-                                                            'cloudtrail_multi_region_is_enabled',
+                                                            test_name,
                                                             'no_issue_found'))
                 else:
                     result.append(
                         self._append_cloudtrail_test_result(trail_list_dict['TrailARN'],
-                                                            'cloudtrail_multi_region_is_enabled',
+                                                            test_name,
                                                             'issue_found'))
         return result
 
