@@ -1,7 +1,7 @@
 import time
 import boto3
 import interfaces
-import json
+import json,re
 
 
 def _format_string_to_json(text):
@@ -110,7 +110,7 @@ class Tester(interfaces.TesterInterface):
 
     def _get_sse_enabled_and_disabled_queue(self, queue_result_dict) -> list:
         result = []
-        test_name = "sqs_has_server_side_encryption"
+        test_name = "aws_sqs_has_server_side_encryption"
         for queue_url in queue_result_dict:
             result.extend(self._find_sse_for_all_queues(queue_url, test_name))
             for dl_queue_url in self._return_all_dead_letter_sqs(queue_url):
@@ -119,7 +119,7 @@ class Tester(interfaces.TesterInterface):
 
     def _get_policy_for_queues(self, queue_result_dict) -> list:
         result = []
-        test_name = "sqs_public_accessibility"
+        test_name = "aws_sqs_public_accessibility"
         for queue_url in queue_result_dict:
             result.extend(self._get_all_public_accessibility_for_all_queues(queue_url, test_name))
             for dl_queue_url in self._return_all_dead_letter_sqs(queue_url):
@@ -134,7 +134,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_sqs_cross_account_access(self) -> list:
         result = []
-        test_name = 'sqs_cross_account_access'
+        test_name = 'aws_sqs_cross_account_access'
         client_organizations = boto3.client('organizations')
         try:
             resp = client_organizations.list_accounts()
@@ -176,7 +176,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_sqs_not_encrypted_with_kms_customer_master_keys(self):
         result = []
-        test_name = 'sqs_not_encrypted_with_kms_customer_master_keys'
+        test_name = 'aws_sqs_not_encrypted_with_kms_customer_master_keys'
         for queue_url in self._return_all_the_sqs():
             response = self.aws_sqs_client.get_queue_attributes(
                 QueueUrl=queue_url,
