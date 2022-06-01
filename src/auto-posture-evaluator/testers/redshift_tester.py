@@ -157,7 +157,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def get_redshift_cluster_not_encrypted_with_kms(self):
-        test_name = "redshift_cluster_not_encrypted_with_KMS_customer_master_keys"
+        test_name = "aws_redshift_cluster_not_encrypted_with_KMS_customer_master_keys"
         result = []
 
         clusters = self.redshift_clusters["Clusters"]
@@ -169,7 +169,7 @@ class Tester(interfaces.TesterInterface):
                 result.append(self._append_redshift_test_result(cluster, test_name, "no_issue_found"))
             else:
                 result.append(self._append_redshift_test_result(cluster, test_name, "issue_found"))
-            
+
         return result
 
     def _get_all_redshift_clusters(self):
@@ -179,5 +179,6 @@ class Tester(interfaces.TesterInterface):
 
         for page in response_iterator:
             clusters.extend(page['Clusters'])
-        
+
         return { "Clusters" : clusters }
+
