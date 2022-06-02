@@ -121,7 +121,7 @@ class Tester(interfaces.TesterInterface):
         return dms_public_accessible
 
     def detect_replication_instances_have_auto_minor_version_upgrade_enabled(self):
-        test_name = "replication_instances_should_have_auto_minor_version_upgrade"
+        test_name = "aws_dms_replication_instances_should_have_auto_minor_version_upgrade"
         result = []
 
         replication_instances = self.all_dms_replica_instances
@@ -136,7 +136,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_multi_az_is_enabled(self):
-        test_name = "replication_instance_should_use_multi_AZ_deployment"
+        test_name = "aws_dms_replication_instance_should_use_multi_AZ_deployment"
         result = []
 
         replication_instances = self.all_dms_replica_instances
