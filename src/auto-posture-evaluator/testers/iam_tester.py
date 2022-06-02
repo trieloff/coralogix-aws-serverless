@@ -81,7 +81,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_password_policy_has_14_or_more_char(self):
         result = []
-        test_name = "password_has_14_or_more_characters"
+        test_name = "aws_iam_password_has_14_or_more_characters"
         try:
             response = self.aws_iam_client.get_account_password_policy()
             password_policy = response['PasswordPolicy']
@@ -97,7 +97,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_hw_mfa_enabled_for_root_account(self):
         result = []
-        test_name = "hardware_mfa_enabled_for_root_account"
+        test_name = "aws_iam_hardware_mfa_enabled_for_root_account"
 
         response = self.aws_iam_client.list_virtual_mfa_devices(AssignmentStatus='Assigned')
         virtual_devices = response['VirtualMFADevices']
@@ -116,7 +116,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_mfa_enabled_for_root_account(self):
         result = []
-        test_name = "mfa_is_enabled_for_root_account"
+        test_name = "aws_iam_mfa_is_enabled_for_root_account"
 
         response = self.aws_iam_client.get_account_summary()
         account_summary = response['SummaryMap']
@@ -128,7 +128,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_policy_does_not_have_user_attached(self):
         result = []
-        test_name = "policy_does_not_have_a_user_attached_to_it"
+        test_name = "aws_iam_policy_does_not_have_a_user_attached_to_it"
         policies = []
         can_paginate = self.aws_iam_client.can_paginate('list_policies')
         if can_paginate:
@@ -156,7 +156,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_access_keys_rotated_every_90_days(self):
         result = []
-        test_name = "access_keys_are_rotated_every_90_days_or_less"
+        test_name = "aws_iam_access_keys_are_rotated_every_90_days_or_less"
 
         users = self.iam_users
         access_keys_max_age = int(self.access_key_maximum_age) if self.access_key_maximum_age else 90
@@ -183,7 +183,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_server_certificate_will_expire(self):
         result = []
-        test_name = "server_certificate_will_expire_within_30_days"
+        test_name = "aws_iam_server_certificate_will_expire_within_30_days"
 
         paginator = self.aws_iam_client.get_paginator('list_server_certificates')
         response_iterator = paginator.paginate()
@@ -209,7 +209,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_expired_ssl_tls_certtificate_removed(self):
         result = []
-        test_name = "all_expired_ssl_tls_certificate_removed"
+        test_name = "aws_iam_all_expired_ssl_tls_certificate_removed"
 
         paginator = self.aws_iam_client.get_paginator('list_server_certificates')
         response_iterator = paginator.paginate()
@@ -232,7 +232,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_password_expires_in_90_days(self):
         result = []
-        test_name = "policy_is_set_expire_passwords_within_90_days_or_less"
+        test_name = "aws_iam_policy_is_set_expire_passwords_within_90_days_or_less"
 
         try:
             response = self.aws_iam_client.get_account_password_policy()
@@ -254,7 +254,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_password_policy_requires_lowercase(self):
         result = []
-        test_name = "password_requires_one_or_more_lowercase_characters"
+        test_name = "aws_iam_password_requires_one_or_more_lowercase_characters"
 
         try:
             response = self.aws_iam_client.get_account_password_policy()
@@ -270,7 +270,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_password_policy_requires_uppercase(self):
         result = []
-        test_name = "password_requires_one_or_more_uppercase_characters"
+        test_name = "aws_iam_password_requires_one_or_more_uppercase_characters"
 
         try:
             response = self.aws_iam_client.get_account_password_policy()
@@ -286,7 +286,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_password_policy_requires_symbols(self):
         result = []
-        test_name = "password_requires_one_or_more_symbols"
+        test_name = "aws_iam_password_requires_one_or_more_symbols"
         try:
             response = self.aws_iam_client.get_account_password_policy()
             password_policy = response['PasswordPolicy']
@@ -301,7 +301,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_password_policy_requires_numbers(self):
         result = []
-        test_name = "password_requires_one_or_more_numbers"
+        test_name = "aws_iam_password_requires_one_or_more_numbers"
 
         try:
             response = self.aws_iam_client.get_account_password_policy()
@@ -319,7 +319,7 @@ class Tester(interfaces.TesterInterface):
     def get_support_role_for_aws_support(self):
         result = []
         policies = []
-        test_name = "support_role_to_manage_incidents_with_AWS_support"
+        test_name = "aws_iam_support_role_to_manage_incidents_with_AWS_support"
 
         paginator = self.aws_iam_client.get_paginator('list_policies')
         response_iterator = paginator.paginate(PaginationConfig={'PageSize': 50})
@@ -346,7 +346,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_priviledged_user_has_admin_permissions(self):
         result = []
-        test_name = "priviledged_user_has_admin_permissions"
+        test_name = "aws_iam_priviledged_user_has_admin_permissions"
 
         users = self.iam_users
 
@@ -372,7 +372,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_password_reuse_policy(self):
         result = []
-        test_name = "password_policy_prevents_password_reuse"
+        test_name = "aws_iam_password_policy_prevents_password_reuse"
 
         try:
             response = self.aws_iam_client.get_account_password_policy()
@@ -389,7 +389,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_no_access_key_for_root_account(self):
         result = []
-        test_name = "no_root_account_access_key_exists"
+        test_name = "aws_iam_no_root_account_access_key_exists"
 
         response = self.aws_iam_client.get_account_summary()
         root_access_key_present = response['SummaryMap']['AccountAccessKeysPresent']
@@ -404,7 +404,7 @@ class Tester(interfaces.TesterInterface):
     def get_mfa_enabled_for_all_iam_users(self):
         result = []
         users = self.iam_users
-        test_name = "mfa_is_enabled_for_all_iam_users_with_console_password"
+        test_name = "aws_iam_mfa_is_enabled_for_all_users_with_console_password"
 
         if len(users) > 0:
             for user in users:
@@ -426,7 +426,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_role_uses_trused_principals(self):
         result = []
-        test_name = "role_uses_trusted_principals"
+        test_name = "aws_iam_role_uses_trusted_principals"
 
         paginator = self.aws_iam_client.get_paginator('list_roles')
         response_iterator = paginator.paginate()
@@ -448,7 +448,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_access_keys_are_not_created_during_initial_setup(self):
         result = []
-        test_name = "access_keys_are_not_created_for_IAM_user_during_initial_setup"
+        test_name = "aws_iam_access_keys_are_not_created_for_user_during_initial_setup"
         users = self.iam_users
 
         if len(users) > 0:
@@ -487,7 +487,7 @@ class Tester(interfaces.TesterInterface):
     def get_policy_with_admin_privilege_not_created(self):
         result = []
         policies = []
-        test_name = "policy_with_admin_privilege_not_created"
+        test_name = "aws_iam_policy_with_admin_privilege_not_created"
 
         paginator = self.aws_iam_client.get_paginator('list_policies')
         response_iterator = paginator.paginate(PaginationConfig={'PageSize': 50})
@@ -516,7 +516,7 @@ class Tester(interfaces.TesterInterface):
     def get_iam_user_credentials_unused_for_45_days(self):
         result = []
         users = self.iam_users
-        test_name = "iam_user_credentials_unused_for_45_days_or_more"
+        test_name = "aws_iam_user_credentials_unused_for_45_days_or_more"
 
         credentials_unuse_threshold = int(self.iam_user_credentials_unuse_threshold) if self.iam_user_credentials_unuse_threshold else 45
         current_date = datetime.now(tz=dt.timezone.utc)
@@ -570,7 +570,7 @@ class Tester(interfaces.TesterInterface):
     def get_more_than_one_active_access_key_for_a_single_user(self):
         result = []
         users = self.iam_users
-        test_name = "more_than_one_active_access_key_for_a_single_user"
+        test_name = "aws_iam_more_than_one_active_access_key_for_a_single_user"
 
         for user in users:
             user_name = user['UserName']
@@ -588,7 +588,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_iam_access_analyzer_disabled(self):
         result = []
-        test_name = "iam_access_analyzer_is_disabled"
+        test_name = "aws_iam_access_analyzer_is_disabled"
 
         response = self.aws_access_analyzer_client.list_analyzers()
         analyzers = {"analyzer": response['analyzers']}
@@ -603,7 +603,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_iam_pre_heartbleed_server_certificates(self):
         result = []
-        test_name = "iam_pre_heartbleed_server_certificates"
+        test_name = "aws_iam_pre_heartbleed_server_certificates"
         certificates = []
         can_paginate = self.aws_iam_client.can_paginate('list_server_certificates')
         if can_paginate:
@@ -631,7 +631,7 @@ class Tester(interfaces.TesterInterface):
     def get_user_access_keys(self):
         result = []
         users = self.iam_users
-        test_name = "there_is_atleast_one_iam_user_with_access_keys_for_api_access"
+        test_name = "aws_iam_there_is_atleast_one_user_with_access_keys_for_api_access"
 
         if len(users) > 0:
             for user in users:
@@ -650,7 +650,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_no_iam_user_present(self):
         result = []
-        test_name = "atleast_one_iam_user_is_present_to_access_aws_account"
+        test_name = "aws_iam_atleast_one_user_is_present_to_access_aws_account"
         users = self.iam_users
 
         if len(users) >= 1:
