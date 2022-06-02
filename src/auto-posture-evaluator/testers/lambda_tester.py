@@ -6,6 +6,7 @@ import interfaces
 import boto3
 import requests
 
+
 class Tester(interfaces.TesterInterface):
     def __init__(self) -> None:
         self.aws_lambda_client = boto3.client('lambda')
@@ -34,12 +35,12 @@ class Tester(interfaces.TesterInterface):
         functions = []
         for response in response_iterator:
             functions.extend(response['Functions'])
-        
+
         return functions
 
     def get_lambda_uses_latest_runtime(self) -> List:
         lambdas = self.functions
-        test_name = "lambda_uses_latest_runtime"
+        test_name = "aws_lambda_uses_latest_runtime"
         response = requests.get(self.SUPPORTED_LAMBDA_RUNTIME)
         supported_versions_repo = response.json()
         result = []
@@ -61,20 +62,20 @@ class Tester(interfaces.TesterInterface):
                 })
             else:
                 result.append({
-                   "user": self.user_id,
+                    "user": self.user_id,
                     "account_arn": self.account_arn,
                     "account": self.account_id,
                     "timestamp": time.time(),
                     "item": Lambda['FunctionArn'],
                     "item_type": "aws_lambda",
                     "test_name": test_name,
-                    "test_result": "issue_found" 
+                    "test_result": "issue_found"
                 })
         return result
-    
+
     def get_lambda_publicly_accessible(self) -> List:
         lambdas = self.functions
-        test_name = "lambda_function_not_publicly_accessible"
+        test_name = "aws_lambda_function_not_publicly_accessible"
         result = []
         function_arn_with_issue = []
         for Lambda in lambdas:
@@ -95,9 +96,9 @@ class Tester(interfaces.TesterInterface):
                             "item": Lambda['FunctionArn'],
                             "item_type": "aws_lambda",
                             "test_name": test_name,
-                            "test_result": "no_issue_found" 
+                            "test_result": "no_issue_found"
                         })
-            except Exception as e:
+            except Exception:
                 result.append({
                     "user": self.user_id,
                     "account_arn": self.account_arn,
@@ -108,7 +109,7 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "no_issue_found"
                 })
-        function_arn_with_issue = set(function_arn_with_issue) 
+        function_arn_with_issue = set(function_arn_with_issue)
         for arn in function_arn_with_issue:
             result.append({
                 "user": self.user_id,
@@ -119,12 +120,12 @@ class Tester(interfaces.TesterInterface):
                 "item_type": "aws_lambda",
                 "test_name": test_name,
                 "test_result": "issue_found"
-            })   
-        
+            })
+
         return result
 
     def get_lambda_has_access_to_vpc_resources(self) -> List:
-        test_name = "lambda_has_access_to_vpc_resources"
+        test_name = "aws_lambda_has_access_to_vpc_resources"
         result = []
         lambdas = self.functions
 
@@ -167,5 +168,5 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "no_issue_found"
                 })
-        
+
         return result
