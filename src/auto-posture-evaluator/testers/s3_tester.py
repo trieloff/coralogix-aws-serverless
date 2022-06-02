@@ -56,7 +56,7 @@ class Tester(interfaces.TesterInterface):
         return self._detect_buckets_with_permissions_matching(buckets_list, "WRITE", "write_enabled_s3_buckets")
 
     def detect_publicly_accessible_s3_buckets_by_acl(self, buckets_list):
-        test_name = "publicly_accessible_s3_buckets_by_acl"
+        test_name = "aws_s3_publicly_accessible_s3_buckets_by_acl"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             issue_detected = False
@@ -92,7 +92,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_non_versioned_s3_buckets(self, buckets_list):
-        test_name = "non_versioned_s3_buckets"
+        test_name = "aws_s3_non_versioned_s3_buckets"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             bucket_name = bucket_meta["Name"]
@@ -122,7 +122,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_not_encrypted_s3_buckets(self, buckets_list):
-        test_name = "not_encrypted_s3_buckets"
+        test_name = "aws_s3_not_encrypted_buckets"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             issue_detected = False
@@ -162,7 +162,7 @@ class Tester(interfaces.TesterInterface):
         return self._detect_buckets_with_permissions_matching(buckets_list, "FULL_CONTROL", "full_control_allowed_s3_buckets")
 
     def detect_buckets_without_mfa_delete_s3_buckets(self, buckets_list):
-        test_name = "no_delete_mfa_s3_buckets"
+        test_name = "aws_s3_no_delete_mfa_buckets"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             bucket_name = bucket_meta["Name"]
@@ -192,7 +192,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_buckets_without_block_public_access_set(self, buckets_list):
-        test_name = "no_block_public_access_set"
+        test_name = "aws_s3_no_block_public_access_set"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             issue_detected = False
@@ -246,7 +246,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_publicly_accessible_s3_buckets_by_policy(self, buckets_list):
-        test_name = "publicly_accessible_s3_buckets_by_policy"
+        test_name = "aws_s3_publicly_accessible_s3_buckets_by_policy"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             issue_detected = False
@@ -288,7 +288,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_bucket_content_listable_by_users(self, buckets_list):
-        test_name = "s3_bucket_content_listable_by_users"
+        test_name = "aws_s3_bucket_content_listable_by_users"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             issue_detected = False
@@ -331,7 +331,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_bucket_content_permissions_viewable_by_users(self, buckets_list):
-        test_name = "s3_bucket_content_permissions_viewable_by_users"
+        test_name = "aws_s3_bucket_content_permissions_viewable_by_users"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             issue_detected = False
@@ -374,7 +374,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_bucket_content_permissions_modifiable_by_users(self, buckets_list):
-        test_name = "s3_bucket_content_permissions_modifiable_by_users"
+        test_name = "aws_s3_bucket_content_permissions_modifiable_by_users"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             issue_detected = False
@@ -417,7 +417,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_bucket_content_writable_by_anonymous(self, buckets_list):
-        test_name = "s3_bucket_content_writable_by_anonymous"
+        test_name = "aws_s3_bucket_content_writable_by_anonymous"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             issue_detected = False
@@ -460,7 +460,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_buckets_without_logging_set(self, buckets_list):
-        test_name = "no_logging_policy_set"
+        test_name = "aws_s3_no_logging_policy_set"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             issue_detected = False
@@ -496,21 +496,21 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_buckets_accessible_by_http_url(self, buckets_list):
-        test_name = "publicly_accessible_s3_buckets_by_http_url"
+        test_name = "aws_s3_publicly_accessible_s3_buckets_by_http_url"
         protocol = "http"
         result = self._test_bucket_url_access(buckets_list, protocol, test_name)
 
         return result
 
     def detect_buckets_accessible_by_https_url(self, buckets_list):
-        test_name = "publicly_accessible_s3_buckets_by_https_url"
+        test_name = "aws_s3_publicly_accessible_s3_buckets_by_https_url"
         protocol = "https"
         result = self._test_bucket_url_access(buckets_list, protocol, test_name)
 
         return result
 
     def detect_bucket_logging_disabled(self, buckets_list):
-        test_name = "bucket_logging_disabled"
+        test_name = "aws_s3_bucket_logging_disabled"
         result = []
         for bucket in buckets_list["Buckets"]:
             bucket_name = bucket["Name"]
@@ -540,7 +540,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_bucket_not_encrypted_with_cmk(self, buckets_list):
-        test_name = "bucket_not_encrypted_with_cmk"
+        test_name = "aws_s3_bucket_not_encrypted_with_cmk"
         result = []
         for bucket in buckets_list["Buckets"]:
             issue_detected = False
@@ -599,7 +599,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_block_public_access_setting_disabled(self):
-        test_name = "block_public_access_setting_disabled"
+        test_name = "aws_s3_block_public_access_setting_disabled"
         result = []
         issue_detected = False
         try:
@@ -638,7 +638,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_bucket_not_configured_with_block_public_access(self, buckets_list):
-        test_name = "bucket_not_configured_with_block_public_access"
+        test_name = "aws_s3_bucket_not_configured_with_block_public_access"
         result = []
         for bucket in buckets_list["Buckets"]:
             bucket_name = bucket["Name"]
@@ -678,7 +678,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_buckets_with_global_upload_and_delete_permission(self, buckets_list):
-        test_name = "buckets_with_global_upload_and_delete_permission"
+        test_name = "aws_s3_buckets_with_global_upload_and_delete_permission"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             bucket_name = bucket_meta["Name"]
@@ -712,7 +712,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_bucket_has_global_list_acl_permission_through_acl(self, buckets_list):
-        test_name = "bucket_has_global_list_acl_permission_through_acl"
+        test_name = "aws_s3_bucket_has_global_list_acl_permission_through_acl"
         result = []
         for bucket_meta in buckets_list["Buckets"]:
             bucket_name = bucket_meta["Name"]
@@ -747,7 +747,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_bucket_has_global_list_permissions_enabled_via_bucket_policy(self, buckets_list):
         result = []
-        test_name = "bucket_has_global_list_permissions_enabled_via_bucket_policy"
+        test_name = "aws_s3_bucket_has_global_list_permissions_enabled_via_bucket_policy"
         for bucket_meta in buckets_list["Buckets"]:
             issue_detected = False
             bucket_name = bucket_meta["Name"]
@@ -789,7 +789,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_bucket_has_global_get_permissions_enabled_via_bucket_policy(self, buckets_list):
         result = []
-        test_name = "bucket_has_global_get_permissions_enabled_via_bucket_policy"
+        test_name = "aws_s3_bucket_has_global_get_permissions_enabled_via_bucket_policy"
         for bucket_meta in buckets_list["Buckets"]:
             issue_detected = False
             bucket_name = bucket_meta["Name"]
@@ -831,7 +831,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_bucket_has_global_put_permissions_enabled_via_bucket_policy(self, buckets_list):
         result = []
-        test_name = "bucket_has_global_put_permissions_enabled_via_bucket_policy"
+        test_name = "aws_s3_bucket_has_global_put_permissions_enabled_via_bucket_policy"
         buckets = buckets_list["Buckets"]
 
         for bucket_meta in buckets:
@@ -1003,7 +1003,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_bucket_has_global_delete_permissions_enabled_via_bucket_policy(self, buckets_list):
         result = []
-        test_name = "bucket_has_global_delete_permissions_enabled_via_bucket_policy"
+        test_name = "aws_s3_bucket_has_global_delete_permissions_enabled_via_bucket_policy"
         buckets = buckets_list["Buckets"]
         for bucket_meta in buckets:
             bucket_name = bucket_meta['Name']
