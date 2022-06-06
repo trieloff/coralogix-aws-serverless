@@ -1,4 +1,4 @@
-FROM python:3.6
+FROM python:3.9
 ENV AWS_DEFAULT_REGION=eu-central-1
 RUN mkdir -p /usr/src/app
 RUN pip install awscli aws-sam-cli
