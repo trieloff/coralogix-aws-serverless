@@ -53,7 +53,7 @@ class Tester(interfaces.TesterInterface):
             self.detect_bucket_has_global_get_permissions_enabled_via_bucket_policy(self.s3_buckets)
 
     def detect_write_enabled_buckets(self, buckets_list):
-        return self._detect_buckets_with_permissions_matching(buckets_list, "WRITE", "write_enabled_s3_buckets")
+        return self._detect_buckets_with_permissions_matching(buckets_list, "WRITE", "aws_s3_write_enabled_s3_buckets")
 
     def detect_publicly_accessible_s3_buckets_by_acl(self, buckets_list):
         test_name = "aws_s3_publicly_accessible_s3_buckets_by_acl"
@@ -159,7 +159,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_full_control_allowed_s3_buckets(self, buckets_list):
-        return self._detect_buckets_with_permissions_matching(buckets_list, "FULL_CONTROL", "full_control_allowed_s3_buckets")
+        return self._detect_buckets_with_permissions_matching(buckets_list, "FULL_CONTROL", "aws_s3_full_control_allowed_s3_buckets")
 
     def detect_buckets_without_mfa_delete_s3_buckets(self, buckets_list):
         test_name = "aws_s3_no_delete_mfa_buckets"
