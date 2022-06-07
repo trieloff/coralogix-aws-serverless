@@ -542,31 +542,41 @@ class Tester(interfaces.TesterInterface):
     def detect_bucket_not_encrypted_with_cmk(self, buckets_list):
         test_name = "aws_s3_bucket_not_encrypted_with_cmk"
         result = []
-        for bucket in buckets_list["Buckets"]:
+        buckets = buckets_list["Buckets"]
+        for bucket in buckets:
             issue_detected = False
             bucket_name = bucket["Name"]
             try:
                 encryption = self.aws_s3_client.get_bucket_encryption(Bucket=bucket_name)
-                for rule in encryption['ServerSideEncryptionConfiguration']['Rules']:
+                encryption_rules = encryption['ServerSideEncryptionConfiguration']['Rules']
+                for rule in encryption_rules:
                     if not rule['BucketKeyEnabled']: continue
-                    sse_algorithm = rule['ApplyServerSideEncryptionByDefault']['SSEAlgorithm']
+                    default_sse = rule['ApplyServerSideEncryptionByDefault']
+                    sse_algorithm = default_sse['SSEAlgorithm']
                     if sse_algorithm == 'AES256':
                         issue_detected = True
                         break
                     else:
-                        if not rule['ApplyServerSideEncryptionByDefault'].get('KMSMasterKeyID'):
+                        if not default_sse.get('KMSMasterKeyID'):
                             issue_detected = True
                             break
-                        key_id = rule['ApplyServerSideEncryptionByDefault']['KMSMasterKeyID']
+                        key_id = default_sse['KMSMasterKeyID']
                         try:
+                            kms_key_description_response = self.aws_kms_client.describe_key(KeyId=key_id)
+                            key_id = kms_key_description_response['KeyMetadata']['KeyId']
                             kms_response = self.aws_kms_client.list_aliases(KeyId=key_id)
+                            key_aliases = kms_response['Aliases']
+
+                            for alias in key_aliases:
+                                alias_name = alias['AliasName']
+                                if alias_name.startswith('alias/aws/') or alias_name.startswith('alias/'):
+                                    issue_detected = False
+                                else:
+                                    issue_detected = True
+                                    break
                         except Exception:
                             issue_detected = True
                             break
-                        for alias in kms_response['Aliases']:
-                            if alias['AliasName'] == 'alias/aws/s3':
-                                issue_detected = True
-                                break
             except botocore.exceptions.ClientError as ex:
                 if ex.response['Error']['Code'] == 'ServerSideEncryptionConfigurationNotFoundError':
                     issue_detected = True
@@ -748,14 +758,53 @@ class Tester(interfaces.TesterInterface):
     def detect_bucket_has_global_list_permissions_enabled_via_bucket_policy(self, buckets_list):
         result = []
         test_name = "aws_s3_bucket_has_global_list_permissions_enabled_via_bucket_policy"
-        for bucket_meta in buckets_list["Buckets"]:
-            issue_detected = False
+        buckets = buckets_list["Buckets"]
+
+        for bucket_meta in buckets:
             bucket_name = bucket_meta["Name"]
             try:
-                bucket_policy = self._get_bucket_policy(bucket_name)
-                policy_statements = json.loads(bucket_policy['Policy'])['Statement']
-                for statement in policy_statements:
-                    if statement["Effect"] == "Allow" and (statement["Principal"] == '*' or statement["Principal"] == {"AWS": "*"}) and (any([("List" in action or action == "s3:*") for action in statement["Action"]]) or "List" in statement["Action"] or statement["Action"] == "s3:*"):
+                response = self._get_bucket_policy(bucket_name=bucket_name)
+                policies = response['Policy']
+
+                policy_obj = json.loads(policies)
+                policy_statements = policy_obj['Statement']
+
+                filtered_result = list(filter(lambda x: x['Effect'] == 'Allow', policy_statements))
+                if filtered_result:
+                    filtered_principal = list(filter(lambda x: x['Principal'] == '*' or x['Principal'] == {"AWS": "*"}, filtered_result))
+
+                    if filtered_principal:
+                        all_actions = []
+                        for i in filtered_principal:
+                            actions = i['Action']
+                            if isinstance(actions, str): all_actions.append(actions)
+                            else: all_actions.extend(actions)
+                        list_actions = list(filter(lambda x: x == '*' or x == 's3:*' or x.startswith('s3:List'), all_actions))
+
+                        if list_actions:
+                            result.append({
+                                "user": self.user_id,
+                                "account_arn": self.account_arn,
+                                "account": self.account_id,
+                                "timestamp": time.time(),
+                                "item": bucket_name,
+                                "item_type": "s3_bucket",
+                                "test_name": test_name,
+                                "policy": policy_obj,
+                                "test_result": "issue_found"
+                            })
+                        else:
+                            result.append({
+                                "user": self.user_id,
+                                "account_arn": self.account_arn,
+                                "account": self.account_id,
+                                "timestamp": time.time(),
+                                "item": bucket_name,
+                                "item_type": "s3_bucket",
+                                "test_name": test_name,
+                                "test_result": "no_issue_found"
+                            })
+                    else:
                         result.append({
                             "user": self.user_id,
                             "account_arn": self.account_arn,
@@ -764,10 +813,20 @@ class Tester(interfaces.TesterInterface):
                             "item": bucket_name,
                             "item_type": "s3_bucket",
                             "test_name": test_name,
-                            "policy": bucket_policy,
-                            "test_result": "issue_found"
+                            "test_result": "no_issue_found"
                         })
-                        issue_detected = True
+                else:
+                    result.append({
+                        "user": self.user_id,
+                        "account_arn": self.account_arn,
+                        "account": self.account_id,
+                        "timestamp": time.time(),
+                        "item": bucket_name,
+                        "item_type": "s3_bucket",
+                        "test_name": test_name,
+                        "test_result": "no_issue_found"
+                    })
+
             except botocore.exceptions.ClientError as ex:
                 if ex.response['Error']['Code'] == 'NoSuchBucketPolicy':
                     # No policy means the bucket content is not listable by policy
@@ -775,29 +834,56 @@ class Tester(interfaces.TesterInterface):
                 else:
                     raise ex
 
-            if not issue_detected:
-                result.append({
-                    "user": self.user_id,
-                    "account_arn": self.account_arn,
-                    "account": self.account_id,
-                    "timestamp": time.time(),
-                    "item": bucket_name,
-                    "item_type": "s3_bucket",
-                    "test_name": test_name,
-                    "test_result": "no_issue_found"})
         return result
 
     def detect_bucket_has_global_get_permissions_enabled_via_bucket_policy(self, buckets_list):
         result = []
         test_name = "aws_s3_bucket_has_global_get_permissions_enabled_via_bucket_policy"
-        for bucket_meta in buckets_list["Buckets"]:
-            issue_detected = False
+        buckets = buckets_list["Buckets"]
+        for bucket_meta in buckets:
             bucket_name = bucket_meta["Name"]
+
             try:
-                bucket_policy = self._get_bucket_policy(bucket_name)
-                policy_statements = json.loads(bucket_policy['Policy'])['Statement']
-                for statement in policy_statements:
-                    if statement["Effect"] == "Allow" and (statement["Principal"] == '*' or statement["Principal"] == {"AWS": "*"}) and (any([("Get" in action or action == "s3:*") for action in statement["Action"]]) or "Get" in statement["Action"] or statement["Action"] == "s3:*"):
+                response = self._get_bucket_policy(bucket_name=bucket_name)
+                policies = response['Policy']
+
+                policy_obj = json.loads(policies)
+                policy_statements = policy_obj['Statement']
+
+                filtered_result = list(filter(lambda x: x['Effect'] == 'Allow', policy_statements))
+                if filtered_result:
+                    filtered_principal = list(filter(lambda x: x['Principal'] == '*' or x['Principal'] == {"AWS": "*"}, filtered_result))
+                    if filtered_principal:
+                        all_actions = []
+                        for i in filtered_principal:
+                            actions = i['Action']
+                            if isinstance(actions, str): all_actions.append(actions)
+                            else: all_actions.extend(actions)
+                        get_actions = list(filter(lambda x: x == '*' or x == 's3:*' or x.startswith('s3:Get'), all_actions))
+                        if get_actions:
+                            result.append({
+                                "user": self.user_id,
+                                "account_arn": self.account_arn,
+                                "account": self.account_id,
+                                "timestamp": time.time(),
+                                "item": bucket_name,
+                                "item_type": "s3_bucket",
+                                "test_name": test_name,
+                                "policy": policy_obj,
+                                "test_result": "issue_found"
+                            })
+                        else:
+                            result.append({
+                                "user": self.user_id,
+                                "account_arn": self.account_arn,
+                                "account": self.account_id,
+                                "timestamp": time.time(),
+                                "item": bucket_name,
+                                "item_type": "s3_bucket",
+                                "test_name": test_name,
+                                "test_result": "no_issue_found"
+                            })
+                    else:
                         result.append({
                             "user": self.user_id,
                             "account_arn": self.account_arn,
@@ -806,10 +892,19 @@ class Tester(interfaces.TesterInterface):
                             "item": bucket_name,
                             "item_type": "s3_bucket",
                             "test_name": test_name,
-                            "policy": bucket_policy,
-                            "test_result": "issue_found"
+                            "test_result": "no_issue_found"
                         })
-                        issue_detected = True
+                else:
+                    result.append({
+                        "user": self.user_id,
+                        "account_arn": self.account_arn,
+                        "account": self.account_id,
+                        "timestamp": time.time(),
+                        "item": bucket_name,
+                        "item_type": "s3_bucket",
+                        "test_name": test_name,
+                        "test_result": "no_issue_found"
+                    })
             except botocore.exceptions.ClientError as ex:
                 if ex.response['Error']['Code'] == 'NoSuchBucketPolicy':
                     # No policy means the bucket content is not listable by policy
@@ -817,16 +912,6 @@ class Tester(interfaces.TesterInterface):
                 else:
                     raise ex
 
-            if not issue_detected:
-                result.append({
-                    "user": self.user_id,
-                    "account_arn": self.account_arn,
-                    "account": self.account_id,
-                    "timestamp": time.time(),
-                    "item": bucket_name,
-                    "item_type": "s3_bucket",
-                    "test_name": test_name,
-                    "test_result": "no_issue_found"})
         return result
 
     def detect_bucket_has_global_put_permissions_enabled_via_bucket_policy(self, buckets_list):
@@ -1034,6 +1119,7 @@ class Tester(interfaces.TesterInterface):
                                 "item": bucket_name,
                                 "item_type": "s3_bucket",
                                 "test_name": test_name,
+                                "policy": policy_obj,
                                 "test_result": "issue_found"
                             })
                         else:
