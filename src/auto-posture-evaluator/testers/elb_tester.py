@@ -6,6 +6,7 @@ import interfaces
 import boto3
 import jmespath
 
+
 class Tester(interfaces.TesterInterface):
     def __init__(self) -> None:
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
@@ -30,7 +31,7 @@ class Tester(interfaces.TesterInterface):
         return "aws"
 
     def run_tests(self) -> list:
-        
+
         return \
             self.get_elbv2_internet_facing() + \
             self.get_elbv2_generating_access_log() + \
@@ -55,7 +56,7 @@ class Tester(interfaces.TesterInterface):
             self.get_elb_ssl_certificate_expires_in_90_days() + \
             self.get_elb_ssl_certificate_should_be_renewed_five_days_in_advance() + \
             self.get_elb_supports_vulnerable_negotiation_policy()
-    
+
     def _get_all_elbv2(self) -> List:
         elbs = []
         paginator = self.aws_elbsv2_client.get_paginator('describe_load_balancers')
@@ -63,9 +64,9 @@ class Tester(interfaces.TesterInterface):
 
         for page in response_iterator:
             elbs.extend(page['LoadBalancers'])
-        
+
         return elbs
-    
+
     def _get_all_elb(self) -> List:
         elbs = []
         paginator = self.aws_elbs_client.get_paginator('describe_load_balancers')
@@ -73,7 +74,7 @@ class Tester(interfaces.TesterInterface):
 
         for page in response_iterator:
             elbs.extend(page['LoadBalancerDescriptions'])
-        
+
         return elbs
 
     def _get_aws_latest_security_policies(self) -> List:
@@ -81,18 +82,18 @@ class Tester(interfaces.TesterInterface):
         return policies
 
     def _get_cipher_suite_details(self) -> Dict:
-        cipher_suites = { 
-            'AES128-GCM-SHA256' : 'weak', 'ECDHE-ECDSA-AES256-SHA': 'weak', 'ECDHE-ECDSA-AES256-GCM-SHA384': 'recommended', 'AES128-SHA': 'weak',
+        cipher_suites = {
+            'AES128-GCM-SHA256': 'weak', 'ECDHE-ECDSA-AES256-SHA': 'weak', 'ECDHE-ECDSA-AES256-GCM-SHA384': 'recommended', 'AES128-SHA': 'weak',
             'ECDHE-RSA-AES128-SHA': 'weak', 'ECDHE-ECDSA-AES128-SHA256': 'weak', 'ECDHE-RSA-AES128-GCM-SHA256': 'secure', 'ECDHE-RSA-AES256-SHA384': 'weak',
-            'AES256-GCM-SHA384': 'weak', 'ECDHE-RSA-AES128-SHA256': 'weak', 'AES256-SHA256' : 'weak', 'ECDHE-ECDSA-AES256-SHA384': 'weak', 
-            'AES128-SHA256' : 'weak', 'ECDHE-RSA-AES256-GCM-SHA384': 'secure', 'ECDHE-ECDSA-AES128-SHA': 'weak', 'AES256-SHA': 'weak', ''
+            'AES256-GCM-SHA384': 'weak', 'ECDHE-RSA-AES128-SHA256': 'weak', 'AES256-SHA256': 'weak', 'ECDHE-ECDSA-AES256-SHA384': 'weak',
+            'AES128-SHA256': 'weak', 'ECDHE-RSA-AES256-GCM-SHA384': 'secure', 'ECDHE-ECDSA-AES128-SHA': 'weak', 'AES256-SHA': 'weak', ''
             'ECDHE-ECDSA-AES128-GCM-SHA256': 'recommended', 'ECDHE-RSA-AES256-SHA': 'weak'
-            }
+        }
         return cipher_suites
 
-    def get_elbv2_internet_facing(self) -> List: 
+    def get_elbv2_internet_facing(self) -> List:
         elbs = self.elbsv2
-        test_name = "elbv2_is_not_internet_facing"
+        test_name = "aws_elbv2_is_not_internet_facing"
         result = []
 
         for elb in elbs:
@@ -133,12 +134,12 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "no_issue_found"
                 })
-        
+
         return result
-    
+
     def get_elb_generating_access_log(self) -> List:
         elbs = self.elbs
-        test_name = "elb_is_generating_access_log"
+        test_name = "aws_elb_is_generating_access_log"
         result = []
 
         for elb in elbs:
@@ -168,11 +169,11 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "issue_found"
                 })
-        
+
         return result
-    
+
     def get_alb_using_secure_listener(self) -> List:
-        test_name = "alb_is_using_secure_listeners"
+        test_name = "aws_elbv2_alb_is_using_secure_listeners"
         elbs = self.elbsv2
         result = []
 
@@ -186,7 +187,7 @@ class Tester(interfaces.TesterInterface):
                 for listener in listeners:
                     if listener['Protocol'] == "HTTPS":
                         secure_listener_count += 1
-                
+
                 if secure_listener_count == len(listeners):
                     result.append({
                         "user": self.user_id,
@@ -211,11 +212,11 @@ class Tester(interfaces.TesterInterface):
                     })
             else:
                 continue
-        
+
         return result
-    
+
     def get_elbv2_generating_access_log(self) -> List:
-        test_name = "elbv2_is_generating_access_logs"
+        test_name = "aws_elbv2_is_generating_access_logs"
         result = []
         elbs = self.elbsv2
 
@@ -230,25 +231,25 @@ class Tester(interfaces.TesterInterface):
                     if i['Key'] == 'access_logs.s3.enabled':
                         if i['Value'] == 'false':
                             result.append({
-                            "user": self.user_id,
-                            "account_arn": self.account_arn,
-                            "account": self.account_id,
-                            "timestamp": time.time(),
-                            "item": elb_arn,
-                            "item_type": "aws_elbv2",
-                            "test_name": test_name,
-                            "test_result": "issue_found"
+                                "user": self.user_id,
+                                "account_arn": self.account_arn,
+                                "account": self.account_id,
+                                "timestamp": time.time(),
+                                "item": elb_arn,
+                                "item_type": "aws_elbv2",
+                                "test_name": test_name,
+                                "test_result": "issue_found"
                             })
                         else:
                             result.append({
-                            "user": self.user_id,
-                            "account_arn": self.account_arn,
-                            "account": self.account_id,
-                            "timestamp": time.time(),
-                            "item": elb_arn,
-                            "item_type": "aws_elbv2",
-                            "test_name": test_name,
-                            "test_result": "no_issue_found"
+                                "user": self.user_id,
+                                "account_arn": self.account_arn,
+                                "account": self.account_id,
+                                "timestamp": time.time(),
+                                "item": elb_arn,
+                                "item_type": "aws_elbv2",
+                                "test_name": test_name,
+                                "test_result": "no_issue_found"
                             })
                         break
                     else: pass
@@ -259,7 +260,7 @@ class Tester(interfaces.TesterInterface):
                 description_temp = temp.split('loadbalancer/')
                 network_interface_description = 'ELB' + ' ' + description_temp[-1]
                 ec2_client = boto3.client('ec2')
-                response = ec2_client.describe_network_interfaces(Filters=[{'Name' : 'description', 'Values' : [network_interface_description]}])
+                response = ec2_client.describe_network_interfaces(Filters=[{'Name': 'description', 'Values': [network_interface_description]}])
                 network_interfaces = response['NetworkInterfaces']
                 interface_ids = []
                 for interface in network_interfaces:
@@ -267,11 +268,11 @@ class Tester(interfaces.TesterInterface):
 
                 has_flow_logs = 0
                 for id in interface_ids:
-                    response = ec2_client.describe_flow_logs(Filters=[{'Name': 'resource-id', 'Values' : [id]}])
+                    response = ec2_client.describe_flow_logs(Filters=[{'Name': 'resource-id', 'Values': [id]}])
                     flow_logs = response['FlowLogs']
                     if len(flow_logs) > 0:
                         has_flow_logs += 1
-                    
+
                 if len(interface_ids) == has_flow_logs:
                     # no issue
                     result.append({
@@ -295,11 +296,11 @@ class Tester(interfaces.TesterInterface):
                         "item_type": "aws_elbv2",
                         "test_name": test_name,
                         "test_result": "issue_found"
-                    })                
+                    })
         return result
 
     def get_elb_listeners_using_tls(self) -> List:
-        test_name = "elb_listeners_using_tls_v1.2"
+        test_name = "aws_elb_listeners_using_tls_v1.2"
         result = []
         elbs = self.elbs
 
@@ -315,7 +316,7 @@ class Tester(interfaces.TesterInterface):
                     policy_descriptions = response['PolicyDescriptions']
 
                     found_tls_v12_count = 0
-                        # look into policy attrs
+                    # look into policy attrs
                     for policy_description in policy_descriptions:
                         policy_attrs = policy_description['PolicyAttributeDescriptions']
                         for attr in policy_attrs:
@@ -325,7 +326,7 @@ class Tester(interfaces.TesterInterface):
                     if found_tls_v12_count == len(policy_descriptions):
                         secure_listeners_count += 1
                 else: pass
-          
+
             if secure_listeners_count == len(listeners):
                 # secure
                 result.append({
@@ -353,7 +354,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def get_elb_listeners_securely_configured(self) -> List:
-        test_name = "elb_listeners_securely_configurd"
+        test_name = "aws_elb_listeners_securely_configurd"
         result = []
 
         elbs = self.elbs
@@ -399,17 +400,17 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "issue_found"
                 })
-        
+
         return result
 
     def get_elb_security_policy_secure_ciphers(self) -> List:
         elbs = self.elbs
-        test_name = "elb_security_policy_does_not_contain_any_insecure_ciphers"
+        test_name = "aws_elb_security_policy_does_not_contain_any_insecure_ciphers"
         result = []
         elb_with_issue = []
         all_elbs = []
         for elb in elbs:
-            # get policies 
+            # get policies
             load_balancer_name = elb['LoadBalancerName']
             all_elbs.append(load_balancer_name)
 
@@ -418,7 +419,7 @@ class Tester(interfaces.TesterInterface):
 
             for listener in listeners:
                 listener_policies.extend(listener['PolicyNames'])
-            
+
             if len(listener_policies) > 0:
                 response = self.aws_elbs_client.describe_load_balancer_policies(PolicyNames=listener_policies)
                 query_result = jmespath.search("PolicyDescriptions[].PolicyAttributeDescriptions[?AttributeValue=='true'].AttributeName", response)
@@ -467,7 +468,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def get_elb_has_secure_ssl_protocol(self) -> List:
-        test_name = "elb_has_secure_ssl_protocol"
+        test_name = "aws_elb_has_secure_ssl_protocol"
         elbs = self.elbs
         result = []
 
@@ -511,7 +512,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def get_elbv2_using_latest_security_policy(self) -> List:
-        test_name = "elbv2_using_latest_security_policy"
+        test_name = "aws_elbv2_using_latest_security_policy"
         elbv2 = self.elbsv2
         latest_security_policies = self.latest_security_policies
         result = []
@@ -527,7 +528,7 @@ class Tester(interfaces.TesterInterface):
                     ssl_policy = listener.get('SslPolicy')
                     if ssl_policy in latest_security_policies:
                         secure_listeners += 1
-                
+
                 if secure_listeners == len(listeners):
                     result.append({
                         "user": self.user_id,
@@ -551,7 +552,7 @@ class Tester(interfaces.TesterInterface):
                         "test_result": "issue_found"
                     })
             else:
-                # GWLB 
+                # GWLB
                 result.append({
                     "user": self.user_id,
                     "account_arn": self.account_arn,
@@ -566,7 +567,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_elbv2_has_deletion_protection(self) -> List:
         result = []
-        test_name = "elbv2_has_deletion_protection_enabled"
+        test_name = "aws_elbv2_has_deletion_protection_enabled"
         elbs = self.elbsv2
 
         for elb in elbs:
@@ -574,7 +575,7 @@ class Tester(interfaces.TesterInterface):
             response = self.aws_elbsv2_client.describe_load_balancer_attributes(LoadBalancerArn=elb_arn)
 
             attrs = response['Attributes']
-            
+
             for attr in attrs:
                 if attr['Key'] == 'deletion_protection.enabled':
                     if attr['Value'] == 'true':
@@ -601,12 +602,12 @@ class Tester(interfaces.TesterInterface):
                         })
                     break
                 else: pass
-        
-        return result 
+
+        return result
 
     def get_elbv2_allows_https_traffic_only(self) -> List:
         result = []
-        test_name = "elbv2_should_allow_https_traffic_only"
+        test_name = "aws_elbv2_should_allow_https_traffic_only"
         elbs = self.elbsv2
 
         for elb in elbs:
@@ -616,11 +617,11 @@ class Tester(interfaces.TesterInterface):
             listerners = []
             for page in response_iterator:
                 listerners.extend(page['Listeners'])
-            
+
             for listerner in listerners:
                 protocol = listerner['Protocol']
                 listener_wo_https = False
-                
+
                 if protocol == 'HTTPS' or protocol == "TLS" or protocol == "GENEVE":
                     pass
                 else:
@@ -648,12 +649,12 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "no_issue_found"
                 })
-        
+
         return result
 
     def get_alb_using_tls12_or_higher(self) -> List:
         result = []
-        test_name = "application_load_balancer_should_allow_TLSv1.2_or_higher"
+        test_name = "aws_elbv2_alb_should_allow_TLSv1.2_or_higher"
         hash_map = {}
         elbs = self.elbsv2
         elb_count = len(elbs)
@@ -667,7 +668,7 @@ class Tester(interfaces.TesterInterface):
                     paginator = self.aws_elbsv2_client.get_paginator('describe_listeners')
                     response_iterator = paginator.paginate(LoadBalancerArn=elb_arn)
                     listerners = []
-                    
+
                     for page in response_iterator:
                         listerners.extend(page['Listeners'])
 
@@ -695,7 +696,7 @@ class Tester(interfaces.TesterInterface):
                             else:
                                 listener_with_issue = True
                                 break
-                        else: 
+                        else:
                             listener_with_issue = True
                             break
                     if listener_with_issue:
@@ -728,7 +729,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_nlb_using_tls12_or_higher(self) -> List:
         result = []
-        test_name = "network_load_balancer_should_allow_TLSv1.2_or_higher"
+        test_name = "aws_elbv2_nlb_should_allow_TLSv1.2_or_higher"
         hash_map = {}
         elbs = self.elbsv2
         elb_count = len(elbs)
@@ -800,9 +801,9 @@ class Tester(interfaces.TesterInterface):
 
     def get_elb_internet_facing(self) -> List:
         elbs = self.elbs
-        test_name = "internet_facing_elbv1"
+        test_name = "aws_elb_internet_facing"
         result = []
-        
+
         if len(elbs) > 0:
             for elb in elbs:
                 load_balancer_name = elb['LoadBalancerName']
@@ -830,9 +831,9 @@ class Tester(interfaces.TesterInterface):
                     })
         else: pass
         return result
-    
+
     def get_nlb_support_insecure_negotiation_policy(self) -> List:
-        test_name = "network_load_balancer_should_not_support_insecure_negotiation_policy"
+        test_name = "aws_elbv2_nlb_should_not_support_insecure_negotiation_policy"
         result = []
         elbs = self.elbsv2
         hash_map = {}
@@ -845,10 +846,10 @@ class Tester(interfaces.TesterInterface):
                     paginator = self.aws_elbsv2_client.get_paginator('describe_listeners')
                     response_iterator = paginator.paginate(LoadBalancerArn=elb_arn)
                     listerners = []
-                    
+
                     for page in response_iterator:
                         listerners.extend(page['Listeners'])
-                    
+
                     for listener in listerners:
                         ssl_policy = listener['SslPolicy'] if listener.get('SslPolicy') else 'no_ssl_policy'
 
@@ -877,7 +878,7 @@ class Tester(interfaces.TesterInterface):
                                 break
                             else: listener_with_issue = False
 
-                        else: 
+                        else:
                             listener_with_issue = True
                             break
                     if listener_with_issue:
@@ -904,11 +905,11 @@ class Tester(interfaces.TesterInterface):
                         })
                 else: pass
         else: pass
-        
+
         return result
 
     def get_alb_certificate_should_be_renewed(self):
-        test_name = "application_load_balancer_ssl_certificate_should_be_renewed_30_days_in_advance"
+        test_name = "aws_elbv2_alb_ssl_certificate_should_be_renewed_30_days_in_advance"
         result = []
         elbs = self.elbsv2
         ssl_certificate_age = int(self.ssl_certificate_age) if self.ssl_certificate_age else 30
@@ -924,16 +925,16 @@ class Tester(interfaces.TesterInterface):
 
                     for page in response_iterator:
                         listerners.extend(page['Listeners'])
-                    
+
                     elb_certificates = []
-                    
+
                     for listener in listerners:
                         certificates = listener.get('Certificates')
                         if certificates is not None:
                             elb_certificates.extend(certificates)
                         else:
-                            elb_certificates.append(certificates) 
-                    
+                            elb_certificates.append(certificates)
+
                     elb_with_issue = False
                     for cert in elb_certificates:
                         if cert is not None:
@@ -994,7 +995,7 @@ class Tester(interfaces.TesterInterface):
 
     def get_elb_cross_zone_load_balancing_enabled(self):
         result = []
-        test_name = "cross_zone_load_balancing_should_be_enabled"
+        test_name = "aws_elb_cross_zone_load_balancing_should_be_enabled"
 
         elbs = self.elbs
 
@@ -1026,12 +1027,12 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "issue_found"
                 })
-        
+
         return result
 
     def get_elb_connection_draining_enabled(self):
         result = []
-        test_name = "elbv1_connection_draining_enabled"
+        test_name = "aws_elb_connection_draining_enabled"
 
         elbs = self.elbs
 
@@ -1063,12 +1064,12 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "issue_found"
                 })
-        
+
         return result
 
     def get_no_registered_instances_in_an_elbv1(self):
         result = []
-        test_name = "no_registered_instances_in_an_elbv1"
+        test_name = "aws_elb_no_registered_instances"
 
         elbs = self.elbs
 
@@ -1097,12 +1098,12 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "issue_found"
                 })
-        
+
         return result
 
     def get_elb_should_allow_tlsv12_or_higher(self):
         result = []
-        test_name = "elbv1_should_allow_tlsv1.2_or_higher"
+        test_name = "aws_elb_should_allow_tlsv1.2_or_higher"
 
         elbs = self.elbs
 
@@ -1110,9 +1111,9 @@ class Tester(interfaces.TesterInterface):
             load_balancer_name = elb['LoadBalancerName']
             response = self.aws_elbs_client.describe_load_balancer_policies(LoadBalancerName=load_balancer_name)
             query_result = jmespath.search("PolicyDescriptions[].PolicyAttributeDescriptions[?AttributeValue=='true'].AttributeName", response)
-            
+
             has_issue = False
-            
+
             for attrs in query_result:
                 temp = list(filter(lambda x: x.startswith('Protocol'), attrs))
                 filtered_result = list(map(lambda x: x.split('-')[-1], temp))
@@ -1122,7 +1123,7 @@ class Tester(interfaces.TesterInterface):
                     has_issue = True
                     break
                 else: pass
-            
+
             if has_issue:
                 result.append({
                     "user": self.user_id,
@@ -1145,12 +1146,12 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "no_issue_found"
                 })
-        
+
         return result
 
     def get_elb_ssl_certificate_expires_in_90_days(self):
         result = []
-        test_name = "elbv1_ssl_certificate_expires_in_90_days"
+        test_name = "aws_elb_ssl_certificate_expires_in_90_days"
         elb_ssl_certificate_expiry = int(self.elb_ssl_certificate_expiry) if self.elb_ssl_certificate_expiry else 90
         elbs = self.elbs
 
@@ -1172,7 +1173,7 @@ class Tester(interfaces.TesterInterface):
                             expire_date = datetime.date(response['Certificate']['NotAfter'])
                             current_date = datetime.date(datetime.now())
                             time_diff = (expire_date - current_date).days
-                            
+
                             if time_diff > elb_ssl_certificate_expiry:
                                 elb_with_issue = False
                             else:
@@ -1191,7 +1192,7 @@ class Tester(interfaces.TesterInterface):
                                 elb_with_issue = True
                                 break
                     else: pass
-                
+
                 if elb_with_issue:
                     result.append({
                         "user": self.user_id,
@@ -1215,12 +1216,12 @@ class Tester(interfaces.TesterInterface):
                         "test_result": "no_issue_found"
                     })
             else: pass
-        
+
         return result
 
     def get_elb_ssl_certificate_should_be_renewed_five_days_in_advance(self):
         result = []
-        test_name = "elb_ssl_certificate_should_be_renewed_five_days_before_it_expires"
+        test_name = "aws_elb_ssl_certificate_should_be_renewed_five_days_before_it_expires"
         ssl_certificate_advance_renew = int(self.elb_ssl_certificate_renew) if self.elb_ssl_certificate_renew else 5
         elbs = self.elbs
 
@@ -1260,7 +1261,7 @@ class Tester(interfaces.TesterInterface):
                             elb_with_issue = True
                             break
                 else: pass
-            
+
             if elb_with_issue:
                 result.append({
                     "user": self.user_id,
@@ -1283,12 +1284,12 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "no_issue_found"
                 })
-        
+
         return result
 
     def get_elb_supports_vulnerable_negotiation_policy(self):
         result = []
-        test_name = "elbv1_supports_vulnerable_negotiation_policy"
+        test_name = "aws_elb_supports_vulnerable_negotiation_policy"
 
         elbs = self.elbs
         elb_with_issue = False
@@ -1305,14 +1306,14 @@ class Tester(interfaces.TesterInterface):
                     policies.extend(policy_names)
                 else:
                     policies.append(None)
-            
+
             for policy in policies:
                 if policy in latest_security_policies:
                     elb_with_issue = False
                 else:
                     elb_with_issue = True
                     break
-            
+
             if elb_with_issue:
                 result.append({
                     "user": self.user_id,
@@ -1335,5 +1336,5 @@ class Tester(interfaces.TesterInterface):
                     "test_name": test_name,
                     "test_result": "no_issue_found"
                 })
-        
+
         return result
