@@ -55,7 +55,7 @@ class Tester(interfaces.TesterInterface):
 
     def emr_cluster_should_have_a_security_configuration(self):
         result = []
-        test_name = "emr_cluster_should_have_a_security_configuration"
+        test_name = "aws_emr_cluster_should_have_a_security_configuration"
 
         clusters = self._get_all_emr_clusters()
 
@@ -78,7 +78,7 @@ class Tester(interfaces.TesterInterface):
 
     def emr_cluster_should_use_kerberos_authentication(self):
         result = []
-        test_name = "emr_cluster_should_use_keberos_authentication"
+        test_name = "aws_emr_cluster_should_use_keberos_authentication"
 
         clusters = self._get_all_emr_clusters()
 
@@ -102,7 +102,7 @@ class Tester(interfaces.TesterInterface):
 
     def emr_in_transit_and_at_rest_encryption_enabled(self):
         result = []
-        test_name = "emr_in_transit_and_at_rest_encryption_enabled"
+        test_name = "aws_emr_in_transit_and_at_rest_encryption_enabled"
 
         clusters = self._get_all_emr_clusters()
 
@@ -126,7 +126,7 @@ class Tester(interfaces.TesterInterface):
 
     def emr_cluster_should_use_kms_for_s3_sse(self):
         result = []
-        test_name = "emr_cluster_should_use_kms_for_s3_sse"
+        test_name = "aws_emr_cluster_should_use_kms_for_s3_sse"
 
         clusters = self._get_all_emr_clusters()
 
@@ -164,7 +164,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def emr_cluster_should_have_local_disk_encryption_with_cmk(self):
-        test_name = "emr_cluster_should_have_local_disk_encryption_with_cmk"
+        test_name = "aws_emr_cluster_should_have_local_disk_encryption_with_cmk"
         result = []
 
         clusters = self._get_all_emr_clusters()
@@ -212,7 +212,7 @@ class Tester(interfaces.TesterInterface):
 
     def emr_cluster_should_upload_logs_to_s3(self):
         result = []
-        test_name = "emr_cluster_should_upload_logs_to_s3"
+        test_name = "aws_emr_cluster_should_upload_logs_to_s3"
 
         clusters = self.emr_clusters
 
@@ -231,7 +231,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def emr_cluster_should_have_local_disk_encryption(self):
-        test_name = "emr_cluster_should_have_local_disk_encryption"
+        test_name = "aws_emr_cluster_should_have_local_disk_encryption"
         result = []
 
         clusters = self._get_all_emr_clusters()
@@ -266,7 +266,7 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def emr_cluster_should_have_encryption_in_transit_enabled(self):
-        test_name = "emr_cluster_should_have_encryption_in_transit_enabled"
+        test_name = "aws_emr_cluster_should_have_encryption_in_transit_enabled"
         result = []
         clusters = self._get_all_emr_clusters()
 
@@ -300,7 +300,7 @@ class Tester(interfaces.TesterInterface):
 
     def emr_cluster_should_use_kms_for_s3_cse(self):
         result = []
-        test_name = "emr_cluster_should_use_kms_for_s3_cse"
+        test_name = "aws_emr_cluster_should_use_kms_for_s3_cse"
 
         clusters = self.emr_clusters
 
@@ -341,7 +341,7 @@ class Tester(interfaces.TesterInterface):
 
     def emr_cluster_encryption_should_be_enabled(self):
         result = []
-        test_name = "emr_cluster_encryption_should_be_enabled"
+        test_name = "aws_emr_cluster_encryption_should_be_enabled"
 
         clusters = self.emr_clusters
 
