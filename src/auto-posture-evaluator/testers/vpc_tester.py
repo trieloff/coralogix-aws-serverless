@@ -635,7 +635,7 @@ class Tester(interfaces.TesterInterface):
         return self._find_security_group_response([3389], ['tcp', '6', '-1'], 'vpc_unrestricted_rdp_access')
 
     def detect_vpc_unrestricted_ftp_data_access(self):
-        return self._find_security_group_response([20], ['tcp', '6', '-1'], 'vpc_unrestricted_rdp_access')
+        return self._find_security_group_response([20], ['tcp', '6', '-1'], 'vpc_unrestricted_ftp_data_access')
 
     def detect_vpc_unrestricted_smtp_access(self):
         return self._find_security_group_response([25], ['tcp', '6', '-1'], 'vpc_unrestricted_smtp_access')
