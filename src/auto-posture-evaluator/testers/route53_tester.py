@@ -1,9 +1,12 @@
+import os
 import time
 import boto3
 import re
 import ipaddress
 import botocore.exceptions
 import interfaces
+import datetime as dt
+from datetime import datetime
 
 
 class Tester(interfaces.TesterInterface):
@@ -14,6 +17,9 @@ class Tester(interfaces.TesterInterface):
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
+        self.route53_region = os.environ["AUTOPOSTURE_ROUTE53_DOMAINS_REGION"] if os.environ.get("AUTOPOSTURE_ROUTE53_DOMAINS_REGION") else "us-east-1"
+        self.aws_route53_domain_client = boto3.client('route53domains', region_name=self.route53_region)
+        self.route53_domains = self._get_all_route53_domains()
 
     def declare_tested_service(self) -> str:
         return 'route53'
@@ -23,12 +29,18 @@ class Tester(interfaces.TesterInterface):
 
     def run_tests(self) -> list:
         if self.hosted_zones is not None and 'HostedZones' in self.hosted_zones:
-            return self.detect_dangling_dns_records()
+            return \
+                self.detect_dangling_dns_records() + \
+                self.route53_domain_expiry_in_7_days() + \
+                self.detect_domain_is_not_locked_for_transfer() + \
+                self.detect_domain_auto_renewal_disabled() + \
+                self.detect_domain_expired()
         else:
             raise Exception("No Route53 data could be retrieved.")
 
     def detect_dangling_dns_records(self):
         result = []
+        test_name = "aws_route53_dangling_dns_records"
         # Filtering the list to get the list of public zones only
         public_zones = [zone for zone in self.hosted_zones['HostedZones'] if not zone['Config']['PrivateZone']]
         for cur_zone in public_zones:
@@ -69,7 +81,7 @@ class Tester(interfaces.TesterInterface):
                             "item_type": "dns_record",
                             "dns_record": record_name,
                             "record": record,
-                            "test_name": 'aws_route53_dangling_dns_records',
+                            "test_name": test_name,
                             "dangling_ip": dangling_ip_address,
                             "zone": cur_zone["Id"],
                             "timestamp": time.time(),
@@ -80,12 +92,164 @@ class Tester(interfaces.TesterInterface):
                         "user": self.user_id,
                         "account_arn": self.account_arn,
                         "account": self.account_id,
-                        "test_name": 'aws_route53_dangling_dns_records',
+                        "test_name": test_name,
                         "item": record_name,
                         "item_type": "dns_record",
                         "record": record,
                         "timestamp": time.time(),
                         "test_result": "no_issue_found"
                     })
+
+        return result
+
+    def _get_all_route53_domains(self):
+        domains = []
+        paginator = self.aws_route53_domain_client.get_paginator('list_domains')
+        response_iterator = paginator.paginate()
+
+        for page in response_iterator:
+            domains.extend(page['Domains'])
+
+        return domains
+
+    def route53_domain_expiry_in_7_days(self):
+        result = []
+        test_name = "aws_route53_domain_expiry_in_7_days"
+
+        domains = self.route53_domains
+
+        for domain in domains:
+            domain_name = domain['DomainName']
+            expiry_date = domain['Expiry']
+            current_date = datetime.now(tz=dt.timezone.utc)
+
+            time_diff = (expiry_date - current_date).days
+
+            if time_diff > 7:
+                result.append({
+                    "user": self.user_id,
+                    "account_arn": self.account_arn,
+                    "account": self.account_id,
+                    "test_name": test_name,
+                    "item": domain_name,
+                    "item_type": "domain_name",
+                    "timestamp": time.time(),
+                    "test_result": "no_issue_found"
+                })
+            else:
+                result.append({
+                    "user": self.user_id,
+                    "account_arn": self.account_arn,
+                    "account": self.account_id,
+                    "test_name": test_name,
+                    "item": domain_name,
+                    "item_type": "domain_name",
+                    "timestamp": time.time(),
+                    "test_result": "issue_found"
+                })
+        return result
+
+    def detect_domain_is_not_locked_for_transfer(self):
+        result = []
+        test_name = "aws_route53_domain_is_not_locked_for_transfer"
+
+        domains = self.route53_domains
+
+        for domain in domains:
+            domain_name = domain['DomainName']
+            transfer_lock = domain['TransferLock']
+
+            if transfer_lock:
+                result.append({
+                    "user": self.user_id,
+                    "account_arn": self.account_arn,
+                    "account": self.account_id,
+                    "test_name": test_name,
+                    "item": domain_name,
+                    "item_type": "domain_name",
+                    "timestamp": time.time(),
+                    "test_result": "no_issue_found"
+                })
+            else:
+                result.append({
+                    "user": self.user_id,
+                    "account_arn": self.account_arn,
+                    "account": self.account_id,
+                    "test_name": test_name,
+                    "item": domain_name,
+                    "item_type": "domain_name",
+                    "timestamp": time.time(),
+                    "test_result": "issue_found"
+                })
+
+        return result
+
+    def detect_domain_auto_renewal_disabled(self):
+        result = []
+        test_name = "aws_route53_domain_auto_renewal_disabled"
+
+        domains = self.route53_domains
+
+        for domain in domains:
+            domain_name = domain['DomainName']
+            auto_renew = domain['AutoRenew']
+
+            if auto_renew:
+                result.append({
+                    "user": self.user_id,
+                    "account_arn": self.account_arn,
+                    "account": self.account_id,
+                    "test_name": test_name,
+                    "item": domain_name,
+                    "item_type": "domain_name",
+                    "timestamp": time.time(),
+                    "test_result": "no_issue_found"
+                })
+            else:
+                result.append({
+                    "user": self.user_id,
+                    "account_arn": self.account_arn,
+                    "account": self.account_id,
+                    "test_name": test_name,
+                    "item": domain_name,
+                    "item_type": "domain_name",
+                    "timestamp": time.time(),
+                    "test_result": "issue_found"
+                })
+        return result
+
+    def detect_domain_expired(self):
+        result = []
+        test_name = "aws_route53_domain_expired"
+
+        domains = self.route53_domains
+
+        for domain in domains:
+            domain_name = domain['DomainName']
+            expiry = domain['Expiry']
+            current_date = datetime.now(tz=dt.timezone.utc)
+
+            if expiry <= current_date:
+                result.append({
+                    "user": self.user_id,
+                    "account_arn": self.account_arn,
+                    "account": self.account_id,
+                    "test_name": test_name,
+                    "item": domain_name,
+                    "item_type": "domain_name",
+                    "timestamp": time.time(),
+                    "test_result": "issue_found"
+                })
+            else:
+                result.append({
+                    "user": self.user_id,
+                    "account_arn": self.account_arn,
+                    "account": self.account_id,
+                    "test_name": test_name,
+                    "item": domain_name,
+                    "item_type": "domain_name",
+                    "timestamp": time.time(),
+                    "test_result": "no_issue_found"
+                })
 
         return result
