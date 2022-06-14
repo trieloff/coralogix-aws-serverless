@@ -2,6 +2,7 @@ import time
 import boto3
 import interfaces
 import json, re
+import concurrent.futures
 
 
 def _format_string_to_json(text):
@@ -28,8 +29,8 @@ def _check_sns_restriction_enabled(access_policy, is_topic):
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self):
-        self.aws_sns_client = boto3.client('sns')
+    def __init__(self, region_name):
+        self.aws_sns_client = boto3.client('sns', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
@@ -42,10 +43,17 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
-        return self.detect_sns_has_restrictions_set_for_publishing() + \
-               self.detect_sns_has_restrictions_set_for_subscription() + \
-               self.detect_sns_topic_has_encryption_enabled() + \
-               self.detect_sns_cross_account_access()
+        executor_list = []
+        return_value = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            executor_list.append(executor.submit(self.detect_sns_has_restrictions_set_for_publishing))
+            executor_list.append(executor.submit(self.detect_sns_has_restrictions_set_for_subscription))
+            executor_list.append(executor.submit(self.detect_sns_topic_has_encryption_enabled))
+            executor_list.append(executor.submit(self.detect_sns_cross_account_access))
+
+            for future in executor_list:
+                return_value.append(future.result())
+        return return_value
 
     def _append_sns_test_result(self, topic_arn, test_name, issue_status):
         return {
