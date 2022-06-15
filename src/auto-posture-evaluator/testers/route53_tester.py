@@ -253,3 +253,38 @@ class Tester(interfaces.TesterInterface):
                 })
 
         return result
+
+    def detect_dns_not_used(self):
+        test_name = "aws_route53_dns_not_used"
+        result = []
+
+        paginator = self.aws_route53_client.get_paginator('list_hosted_zones')
+        response_iterator = paginator.paginate()
+        hosted_zones = []
+        for page in response_iterator:
+            hosted_zones.extend(page['HostedZones'])
+
+        if hosted_zones:
+            result.append({
+                "user": self.user_id,
+                "account_arn": self.account_arn,
+                "account": self.account_id,
+                "test_name": test_name,
+                "item": "dns@@" + self.account_id,
+                "item_type": "dns_records",
+                "timestamp": time.time(),
+                "test_result": "no_issue_found"
+            })
+        else:
+            result.append({
+                "user": self.user_id,
+                "account_arn": self.account_arn,
+                "account": self.account_id,
+                "test_name": test_name,
+                "item": "dns@@" + self.account_id,
+                "item_type": "dns_records",
+                "timestamp": time.time(),
+                "test_result": "issue_found"
+            })
+
+        return result
