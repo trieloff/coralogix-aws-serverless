@@ -1,7 +1,7 @@
 import time
 import boto3
 import interfaces
-import json,re
+import json, re
 
 
 def _format_string_to_json(text):
@@ -160,14 +160,22 @@ class Tester(interfaces.TesterInterface):
                             issue_found = True
                         if issue_found:
                             break
-                        for aws_account_info in statement_dict['Principal']['AWS']:
-                            try:
-                                account_id_to_compare = (re.search(r'\b\d{12}\b', aws_account_info)).group(0)
+                        if 'AWS' in statement_dict['Principal']:
+                            if isinstance(statement_dict['Principal']['AWS'], str):
+                                account_id_to_compare = (
+                                    re.search(r'\b\d{12}\b', statement_dict['Principal']['AWS'])).group(0)
                                 if account_id_to_compare not in all_accounts:
                                     issue_found = True
                                     break
-                            except:
-                                pass
+                                continue
+                            for aws_account_info in statement_dict['Principal']['AWS']:
+                                try:
+                                    account_id_to_compare = (re.search(r'\b\d{12}\b', aws_account_info)).group(0)
+                                    if account_id_to_compare not in all_accounts:
+                                        issue_found = True
+                                        break
+                                except:
+                                    pass
             if issue_found:
                 result.append(self._append_sqs_test_result(queue_url, test_name, "issue_found"))
             else:
