@@ -490,13 +490,16 @@ class Tester(interfaces.TesterInterface):
         for i in all_inbound_permissions:
             if i['IpProtocol'] == "-1" and len(i['IpRanges']) == 0: pass
             elif i['IpProtocol'] == "-1" and len(i['IpRanges']) != 0:
-                for ip in i['IpRanges']:
-                    if ip['CidrIp'] == '0.0.0.0/0':
-                        security_groups.append(i['security_group'].id)
+                if any([ip['CidrIp'] == '0.0.0.0/0' for ip in i['IpRanges']]):
+                    security_groups.append(i['security_group'].id)
+                if any([ip['CidrIpv6'] == '::/0' for ip in i['Ipv6Ranges']]):
+                    security_groups.append(i['security_group'].id)
+
             elif (i['FromPort'] <= SSHPORT and i['ToPort'] >= SSHPORT) or (i['FromPort'] <= RDPPORT and i['ToPort'] >= RDPPORT):
-                for ip in i['IpRanges']:
-                    if ip['CidrIp'] == '0.0.0.0/0':
-                        security_groups.append(i['security_group'].id)
+                if any([ip['CidrIp'] == '0.0.0.0/0' for ip in i['IpRanges']]):
+                    security_groups.append(i['security_group'].id)
+                if any([ip['CidrIpv6'] == '::/0' for ip in i['Ipv6Ranges']]):
+                    security_groups.append(i['security_group'].id)
             else:
                 continue
         security_groups_with_issue = set(security_groups)
