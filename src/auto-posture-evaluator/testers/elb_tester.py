@@ -86,8 +86,21 @@ class Tester(interfaces.TesterInterface):
             'AES128-GCM-SHA256': 'weak', 'ECDHE-ECDSA-AES256-SHA': 'weak', 'ECDHE-ECDSA-AES256-GCM-SHA384': 'recommended', 'AES128-SHA': 'weak',
             'ECDHE-RSA-AES128-SHA': 'weak', 'ECDHE-ECDSA-AES128-SHA256': 'weak', 'ECDHE-RSA-AES128-GCM-SHA256': 'secure', 'ECDHE-RSA-AES256-SHA384': 'weak',
             'AES256-GCM-SHA384': 'weak', 'ECDHE-RSA-AES128-SHA256': 'weak', 'AES256-SHA256': 'weak', 'ECDHE-ECDSA-AES256-SHA384': 'weak',
-            'AES128-SHA256': 'weak', 'ECDHE-RSA-AES256-GCM-SHA384': 'secure', 'ECDHE-ECDSA-AES128-SHA': 'weak', 'AES256-SHA': 'weak', ''
-            'ECDHE-ECDSA-AES128-GCM-SHA256': 'recommended', 'ECDHE-RSA-AES256-SHA': 'weak'
+            'AES128-SHA256': 'weak', 'ECDHE-RSA-AES256-GCM-SHA384': 'secure', 'ECDHE-ECDSA-AES128-SHA': 'weak', 'AES256-SHA': 'weak',
+            'ECDHE-ECDSA-AES128-GCM-SHA256': 'recommended', 'ECDHE-RSA-AES256-SHA': 'weak', 'DHE-RSA-AES128-SHA': 'weak',
+            'DHE-DSS-AES128-SHA': 'weak', 'CAMELLIA128-SHA': 'weak', 'EDH-RSA-DES-CBC3-SHA': 'weak', 'DES-CBC3-SHA': 'weak', 'ECDHE-RSA-RC4-SHA': 'weak',
+            'RC4-SHA': 'weak', 'ECDHE-ECDSA-RC4-SHA': 'weak', 'DHE-DSS-AES256-GCM-SHA384': 'recommended', 'DHE-RSA-AES256-GCM-SHA384': 'secure', 'DHE-RSA-AES256-SHA256': 'weak',
+            'DHE-DSS-AES256-SHA256': 'weak', 'DHE-RSA-AES256-SHA': 'weak', 'DHE-DSS-AES256-SHA': 'weak', 'DHE-RSA-CAMELLIA256-SHA': 'weak', 'DHE-DSS-CAMELLIA256-SHA': 'weak',
+            'CAMELLIA256-SHA': 'weak', 'EDH-DSS-DES-CBC3-SHA': 'weak', 'DHE-DSS-AES128-GCM-SHA256': 'recommended', 'DHE-RSA-AES128-GCM-SHA256': 'secure', 'DHE-RSA-AES128-SHA256': 'weak',
+            'DHE-DSS-AES128-SHA256': 'weak', 'DHE-RSA-CAMELLIA128-SHA': 'weak', 'DHE-DSS-CAMELLIA128-SHA': 'weak', 'ADH-AES128-GCM-SHA256': 'insecure', 'ADH-AES128-SHA': 'insecure',
+            'ADH-AES128-SHA256': 'insecure', 'ADH-AES256-GCM-SHA384': 'insecure', 'ADH-AES256-SHA': 'insecure', 'ADH-AES256-SHA256': 'insecure', 'ADH-CAMELLIA128-SHA': 'insecure',
+            'ADH-CAMELLIA256-SHA': 'insecure', 'ADH-DES-CBC3-SHA': 'insecure', 'ADH-DES-CBC-SHA': 'weak', 'ADH-RC4-MD5': 'weak', 'ADH-SEED-SHA': 'insecure', 'DES-CBC-SHA': 'weak',
+            'DHE-DSS-SEED-SHA': 'weak', 'DHE-RSA-SEED-SHA': 'weak', 'EDH-DSS-DES-CBC-SHA': 'weak', 'EDH-RSA-DES-CBC-SHA': 'weak', 'IDEA-CBC-SHA': 'weak', 'RC4-MD5': 'weak',
+            'SEED-SHA': 'weak', 'DES-CBC3-MD5': 'weak', 'DES-CBC-MD5': 'weak', 'RC2-CBC-MD5': 'weak', 'PSK-AES256-CBC-SHA': 'weak', 'PSK-3DES-EDE-CBC-SHA': 'weak',
+            'KRB5-DES-CBC3-SHA': 'weak', 'KRB5-DES-CBC3-MD5': 'weak', 'PSK-AES128-CBC-SHA': 'weak', 'PSK-RC4-SHA': 'weak', 'KRB5-RC4-SHA': 'weak', 'KRB5-RC4-MD5': 'weak',
+            'KRB5-DES-CBC-SHA': 'weak', 'KRB5-DES-CBC-MD5': 'weak', 'EXP-EDH-RSA-DES-CBC-SHA': 'weak', 'EXP-EDH-DSS-DES-CBC-SHA': 'weak', 'EXP-ADH-DES-CBC-SHA': 'weak',
+            'EXP-DES-CBC-SHA': 'weak', 'EXP-RC2-CBC-MD5': 'weak', 'EXP-KRB5-RC2-CBC-SHA': 'weak', 'EXP-KRB5-DES-CBC-SHA': 'weak', 'EXP-KRB5-RC2-CBC-MD5': 'weak',
+            'EXP-KRB5-DES-CBC-MD5': 'weak', 'EXP-ADH-RC4-MD5': 'weak', 'EXP-RC4-MD5': 'weak', 'EXP-KRB5-RC4-SHA': 'weak', 'EXP-KRB5-RC4-MD5': 'weak'
         }
         return cipher_suites
 
@@ -421,7 +434,7 @@ class Tester(interfaces.TesterInterface):
                 listener_policies.extend(listener['PolicyNames'])
 
             if len(listener_policies) > 0:
-                response = self.aws_elbs_client.describe_load_balancer_policies(PolicyNames=listener_policies)
+                response = self.aws_elbs_client.describe_load_balancer_policies(LoadBalancerName=load_balancer_name, PolicyNames=listener_policies)
                 query_result = jmespath.search("PolicyDescriptions[].PolicyAttributeDescriptions[?AttributeValue=='true'].AttributeName", response)
                 all_attrs = []
 
