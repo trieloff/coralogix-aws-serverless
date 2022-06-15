@@ -45,14 +45,14 @@ class Tester(interfaces.TesterInterface):
     def run_tests(self) -> list:
         executor_list = []
         return_value = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
             executor_list.append(executor.submit(self.detect_sns_has_restrictions_set_for_publishing))
             executor_list.append(executor.submit(self.detect_sns_has_restrictions_set_for_subscription))
             executor_list.append(executor.submit(self.detect_sns_topic_has_encryption_enabled))
             executor_list.append(executor.submit(self.detect_sns_cross_account_access))
 
             for future in executor_list:
-                return_value.append(future.result())
+                return_value += future.result()
         return return_value
 
     def _append_sns_test_result(self, topic_arn, test_name, issue_status):
