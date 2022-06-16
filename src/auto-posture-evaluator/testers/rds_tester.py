@@ -1,8 +1,8 @@
+import boto3
+import concurrent.futures
+import interfaces
 import time
 from datetime import datetime, timezone
-
-import boto3
-import interfaces
 
 
 def _return_default_port_on_rds_engines(db_engine):
@@ -18,8 +18,8 @@ def _return_default_port_on_rds_engines(db_engine):
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self):
-        self.aws_rds_client = boto3.client('rds')
+    def __init__(self, region_name):
+        self.aws_rds_client = boto3.client('rds', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
@@ -34,17 +34,25 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
-        return self.detect_rds_instance_encrypted() + \
-               self.detect_rds_instance_not_publicly_accessible() + \
-               self.detect_rds_instance_not_using_default_port() + \
-               self.detect_rds_snapshot_not_publicly_accessible() + \
-               self.detect_rds_backup_retention_period_less_than_a_week() + \
-               self.detect_rds_instance_should_have_automatic_minor_version_upgrades_enabled() + \
-               self.detect_rds_instance_should_have_automated_backups_enabled() + \
-               self.detect_rds_transport_encryption_disabled() + \
-               self.detect_rds_public_cluster_manual_snapshots() + \
-               self.detect_rds_instance_level_events_subscriptions() + \
-               self.detect_rds_last_restorable_time_check_more_than_a_week_old()
+        executor_list = []
+        return_value = []
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.detect_rds_instance_encrypted))
+            executor_list.append(executor.submit(self.detect_rds_instance_not_publicly_accessible))
+            executor_list.append(executor.submit(self.detect_rds_instance_not_using_default_port))
+            executor_list.append(executor.submit(self.detect_rds_snapshot_not_publicly_accessible))
+            executor_list.append(executor.submit(self.detect_rds_backup_retention_period_less_than_a_week))
+            executor_list.append(
+                executor.submit(self.detect_rds_instance_should_have_automatic_minor_version_upgrades_enabled))
+            executor_list.append(executor.submit(self.detect_rds_instance_should_have_automated_backups_enabled))
+            executor_list.append(executor.submit(self.detect_rds_transport_encryption_disabled))
+            executor_list.append(executor.submit(self.detect_rds_public_cluster_manual_snapshots))
+            executor_list.append(executor.submit(self.detect_rds_instance_level_events_subscriptions))
+            executor_list.append(executor.submit(self.detect_rds_last_restorable_time_check_more_than_a_week_old))
+
+            for future in executor_list:
+                return_value += future.result()
+        return return_value
 
     def _append_rds_test_result(self, rds, test_name, issue_status):
         return {
