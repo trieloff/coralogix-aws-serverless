@@ -2,19 +2,20 @@ import time
 from datetime import datetime, timezone
 import boto3
 import interfaces
+import concurrent.futures
 
 
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self):
-        self.aws_eks_client = boto3.client('eks')
+    def __init__(self, region_name):
+        self.aws_eks_client = boto3.client('eks', region_name=region_name)
+        self.ec2_vpc_client = boto3.client('ec2', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
         self.eks_cluster = self._return_all_eks_cluster()
-        self.ec2_vpc_client = boto3.client('ec2')
 
     def declare_tested_service(self) -> str:
         return 'eks'
@@ -23,18 +24,25 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
-        return self.detect_eks_kubernetes_api_server_publicly_accessible() + \
-               self.detect_eks_control_plane_logging_is_disabled() + \
-               self.detect_eks_metric_and_alarm_do_not_exist_for_eks_configuration_changes() + \
-               self.detect_eks_outdated_ami_for_eks_related_instance() + \
-               self.detect_eks_unsupported_kubernetes_installed_on_eks_cluster() + \
-               self.detect_eks_default_vpc_is_being_used_to_launch_an_eks_cluster() + \
-               self.detect_eks_cluster_has_been_assigned_with_multiple_security_groups() + \
-               self.detect_eks_security_group_allows_incoming_traffic_on_forbidden_ports() + \
-               self.detect_eks_old_version_of_vpc_cni_installed_on_eks_cluster() + \
-               self.detect_eks_cluster_secrets_are_not_encrypted() + \
-               self.detect_eks_cluster_without_fargate_profiles() + \
-               self.detect_eks_node_with_public_ip_address()
+        executor_list = []
+        return_value = []
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.detect_eks_kubernetes_api_server_publicly_accessible))
+            executor_list.append(executor.submit(self.detect_eks_control_plane_logging_is_disabled))
+            executor_list.append(executor.submit(self.detect_eks_metric_and_alarm_do_not_exist_for_eks_configuration_changes))
+            executor_list.append(executor.submit(self.detect_eks_outdated_ami_for_eks_related_instance))
+            executor_list.append(executor.submit(self.detect_eks_unsupported_kubernetes_installed_on_eks_cluster))
+            executor_list.append(executor.submit(self.detect_eks_default_vpc_is_being_used_to_launch_an_eks_cluster))
+            executor_list.append(executor.submit(self.detect_eks_cluster_has_been_assigned_with_multiple_security_groups))
+            executor_list.append(executor.submit(self.detect_eks_security_group_allows_incoming_traffic_on_forbidden_ports))
+            executor_list.append(executor.submit(self.detect_eks_old_version_of_vpc_cni_installed_on_eks_cluster))
+            executor_list.append(executor.submit(self.detect_eks_cluster_secrets_are_not_encrypted))
+            executor_list.append(executor.submit(self.detect_eks_cluster_without_fargate_profiles))
+            executor_list.append(executor.submit(self.detect_eks_node_with_public_ip_address))
+
+            for future in executor_list:
+                return_value += future.result()
+        return return_value
 
     def _return_all_eks_cluster(self):
         eks_cluster_response = self.aws_eks_client.list_clusters(
