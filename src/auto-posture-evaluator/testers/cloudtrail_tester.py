@@ -1,12 +1,12 @@
 import time
 import boto3
 import interfaces
-import json
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self):
-        self.aws_cloudtrail_client = boto3.client('cloudtrail')
+    def __init__(self, region_name):
+        self.aws_cloudtrail_client = boto3.client('cloudtrail', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
@@ -20,11 +20,20 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
-        return self.detect_not_integrated_with_cloudwatch() + \
-               self.detect_not_encrypted_with_sse_kms() + \
-               self.detect_global_service() + \
-               self.detect_log_validation() + \
-               self.detect_multi_region_trails()
+        executor_list = []
+        return_values = []
+
+        with ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.detect_not_integrated_with_cloudwatch))
+            executor_list.append(executor.submit(self.detect_not_encrypted_with_sse_kms))
+            executor_list.append(executor.submit(self.detect_global_service))
+            executor_list.append(executor.submit(self.detect_log_validation))
+            executor_list.append(executor.submit(self.detect_multi_region_trails))
+
+            for future in executor_list:
+                return_values.extend(future.result())
+
+        return return_values
 
     def _list_all_cloudtrail(self):
         response = self.aws_cloudtrail_client.list_trails()
@@ -158,4 +167,3 @@ class Tester(interfaces.TesterInterface):
                                                             test_name,
                                                             'issue_found'))
         return result
-
