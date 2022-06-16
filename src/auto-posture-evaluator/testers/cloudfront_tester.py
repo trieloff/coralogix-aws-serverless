@@ -1,12 +1,12 @@
 import time
 import boto3
 import interfaces
-import json
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self):
-        self.aws_cloudfront_client = boto3.client('cloudfront')
+    def __init__(self, region_name):
+        self.aws_cloudfront_client = boto3.client('cloudfront', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
@@ -20,11 +20,20 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
-        return self.detect_waf_enabled_disabled_distribution() + \
-               self.detect_unencrypted_cloudfront_to_origin_server_connection() + \
-               self.detect_encrypted_data_in_transit_using_tls_higher_version() + \
-               self.detect_unencrypted_cloudfront_to_viewer_connection() + \
-               self.detect_cloudfront_enable_origin_access_identity_for_cloudfront_distributions_with_s3_origin()
+        executor_list = []
+        return_values = []
+
+        with ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.detect_waf_enabled_disabled_distribution))
+            executor_list.append(executor.submit(self.detect_unencrypted_cloudfront_to_origin_server_connection))
+            executor_list.append(executor.submit(self.detect_encrypted_data_in_transit_using_tls_higher_version))
+            executor_list.append(executor.submit(self.detect_unencrypted_cloudfront_to_viewer_connection))
+            executor_list.append(executor.submit(self.detect_cloudfront_enable_origin_access_identity_for_cloudfront_distributions_with_s3_origin))
+
+            for future in executor_list:
+                return_values.extend(future.result())
+
+        return return_values
 
     def _list_all_cloud_front(self):
         cloud_front_details = []
@@ -33,12 +42,12 @@ class Tester(interfaces.TesterInterface):
 
         )
         if 'DistributionList' in response and response['DistributionList'] and 'Items' in response[
-            'DistributionList'] and response['DistributionList'][
-            'Items']:
+                'DistributionList'] and response['DistributionList'][
+                'Items']:
             cloud_front_details.extend(response['DistributionList'][
-                                           'Items'])
+                'Items'])
         if 'DistributionList' in response and response['DistributionList'] and 'IsTruncated' in response[
-            'DistributionList'] and response['DistributionList']['IsTruncated']:
+                'DistributionList'] and response['DistributionList']['IsTruncated']:
             while (response['DistributionList']['IsTruncated']):
                 response = self.aws_cloudfront_client.list_distributions(
                     Marker=response['DistributionList']['NextMarker'],
@@ -49,7 +58,7 @@ class Tester(interfaces.TesterInterface):
                         response['DistributionList'][
                             'Items']:
                     cloud_front_details.extend(response['DistributionList'][
-                                                   'Items'])
+                        'Items'])
         return cloud_front_details
 
     def _append_cloudfront_test_result(self, cloud_front_id, test_name, issue_status):
@@ -144,10 +153,10 @@ class Tester(interfaces.TesterInterface):
             if 'Origins' in items_dict and 'Items' in items_dict['Origins'] and items_dict['Origins']['Items']:
                 for origin_dict in items_dict['Origins']['Items']:
                     if 'S3OriginConfig' not in origin_dict or ('S3OriginConfig' in origin_dict and (
-                            ('OriginAccessIdentity' in origin_dict['S3OriginConfig'] and
-                             not origin_dict['S3OriginConfig'][
+                            ('OriginAccessIdentity' in origin_dict['S3OriginConfig']
+                             and not origin_dict['S3OriginConfig'][
                                  'OriginAccessIdentity']) or not origin_dict[
-                        'S3OriginConfig'] or 'OriginAccessIdentity' not in origin_dict['S3OriginConfig'])):
+                                'S3OriginConfig'] or 'OriginAccessIdentity' not in origin_dict['S3OriginConfig'])):
                         issue_found = True
                         break
             else:
@@ -162,4 +171,3 @@ class Tester(interfaces.TesterInterface):
                                                         'no_issue_found'))
 
         return result
-
