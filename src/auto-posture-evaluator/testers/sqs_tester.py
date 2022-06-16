@@ -2,15 +2,15 @@ import time
 import boto3
 import interfaces
 import json, re
-
+import concurrent.futures
 
 def _format_string_to_json(text):
     return json.loads(text)
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self):
-        self.aws_sqs_client = boto3.client('sqs')
+    def __init__(self, region_name):
+        self.aws_sqs_client = boto3.client('sqs', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
@@ -23,10 +23,16 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
-        return self.detect_sqs_server_side_encryption() + \
-               self.detect_sqs_public_accessible_queues() + \
-               self.detect_sqs_not_encrypted_with_kms_customer_master_keys() + \
-               self.detect_sqs_cross_account_access()
+        executor_list = []
+        return_value = []
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.detect_sqs_server_side_encryption))
+            executor_list.append(executor.submit(self.detect_sqs_public_accessible_queues))
+            executor_list.append(executor.submit(self.detect_sqs_not_encrypted_with_kms_customer_master_keys))
+            executor_list.append(executor.submit(self.detect_sqs_cross_account_access))
+            for future in executor_list:
+                return_value += future.result()
+        return return_value
 
     def _append_sqs_test_result(self, sqs_url, test_name, issue_status) -> dict:
         return {
