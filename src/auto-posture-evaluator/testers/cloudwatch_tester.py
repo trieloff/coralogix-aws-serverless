@@ -2,12 +2,13 @@ import time
 import interfaces
 import boto3
 import botocore.exceptions
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self):
-        self.aws_cloudwatch_client = boto3.client('cloudwatch')
-        self.aws_cloudformation_client = boto3.client('cloudformation')
+    def __init__(self, region_name):
+        self.aws_cloudwatch_client = boto3.client('cloudwatch', region_name=region_name)
+        self.aws_cloudformation_client = boto3.client('cloudformation', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
@@ -20,23 +21,31 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
-        return \
-            self.get_unauthorized_api_calls_not_monitored() + \
-            self.get_route_table_changes_not_monitored() + \
-            self.get_console_sign_in_failure_alarm() + \
-            self.get_s3_bucket_policy_changes_not_monitored() + \
-            self.get_vpc_changes_not_monitored() + \
-            self.get_organization_changes_not_monitored() + \
-            self.get_usage_of_root_account_not_monitored() + \
-            self.get_cloudtrail_configuration_changes_not_monitored() + \
-            self.get_management_console_sign_in_without_mfa_not_monitored() + \
-            self.get_cmk_configuration_change_not_monitored() + \
-            self.get_network_gateway_changes_not_monitored() + \
-            self.get_security_group_changes_not_monitored() + \
-            self.get_network_acl_changes_not_monitored() + \
-            self.get_aws_config_configuration_changes_not_monitored() + \
-            self.get_iam_policy_changes_not_monitored() + \
-            self.get_enable_aws_cloudformation_stack_notifications()
+        executor_list = []
+        return_values = []
+
+        with ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.get_unauthorized_api_calls_not_monitored))
+            executor_list.append(executor.submit(self.get_route_table_changes_not_monitored))
+            executor_list.append(executor.submit(self.get_console_sign_in_failure_alarm))
+            executor_list.append(executor.submit(self.get_s3_bucket_policy_changes_not_monitored))
+            executor_list.append(executor.submit(self.get_vpc_changes_not_monitored))
+            executor_list.append(executor.submit(self.get_organization_changes_not_monitored))
+            executor_list.append(executor.submit(self.get_usage_of_root_account_not_monitored))
+            executor_list.append(executor.submit(self.get_cloudtrail_configuration_changes_not_monitored))
+            executor_list.append(executor.submit(self.get_management_console_sign_in_without_mfa_not_monitored))
+            executor_list.append(executor.submit(self.get_cmk_configuration_change_not_monitored))
+            executor_list.append(executor.submit(self.get_network_gateway_changes_not_monitored))
+            executor_list.append(executor.submit(self.get_security_group_changes_not_monitored))
+            executor_list.append(executor.submit(self.get_network_acl_changes_not_monitored))
+            executor_list.append(executor.submit(self.get_aws_config_configuration_changes_not_monitored))
+            executor_list.append(executor.submit(self.get_iam_policy_changes_not_monitored))
+            executor_list.append(executor.submit(self.get_enable_aws_cloudformation_stack_notifications))
+
+            for future in executor_list:
+                return_values.extend(future.result())
+
+        return return_values
 
     def _get_result(self, item, item_type, test_name, issue_status):
         return {
