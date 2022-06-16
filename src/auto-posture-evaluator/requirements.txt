@@ -6,3 +6,4 @@ jmespath
 grpclib
 protobuf
 betterproto==2.0.0b4
+grpclib==0.4.2

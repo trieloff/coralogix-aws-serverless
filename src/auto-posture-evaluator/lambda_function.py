@@ -1,3 +1,4 @@
+#!/usr/local/bin/python3
 import auto_posture_evaluator
 
 def lambda_handler(event, context):

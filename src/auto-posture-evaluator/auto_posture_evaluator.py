@@ -1,8 +1,8 @@
+#!/usr/local/bin/python3
 import asyncio
 import datetime
 import os
 import uuid
-from asyncio import AbstractEventLoop
 
 import importlib
 import sys
@@ -10,7 +10,8 @@ from grpclib.client import Channel
 from model import SecurityReportTestResult, SecurityReportIngestionServiceStub, SecurityReportContext, SecurityReport, \
     SecurityReportTestResultResult
 from model.helper import struct_from_dict
-
+import concurrent.futures
+import boto3
 
 testers_module_names = []
 if not os.environ.get('TESTER_LIST'):
@@ -75,75 +76,91 @@ class AutoPostureEvaluator:
         self.tests = []
         self.application_name = os.environ.get('APPLICATION_NAME', 'NO_APP_NAME')
         self.subsystem_name = os.environ.get('SUBSYSTEM_NAME', 'NO_SUB_NAME')
+        self.batch_size = 5000
         for tester_module in testers_module_names:
             if "Tester" in sys.modules[tester_module].__dict__:
                 self.tests.append(sys.modules[tester_module].__dict__["Tester"])
 
+    def run_single_test(self, cur_tester, execution_id,loop):
+        events_buffer = []
+        cur_test_start_timestamp = datetime.datetime.now()
+        #print("INFO: Start " + str(cur_tester.declare_tested_service()) + " tester")
+        try:
+            tester_result = cur_tester.run_tests()
+            cur_test_end_timestamp = datetime.datetime.now()
+        except Exception as exTesterException:
+            print("WARN: The tester has crashed with the following exception during 'run_tests()'. SKIPPED: " +
+                  str(exTesterException))
+            return
+
+        error_template = "The result object from the tester " + cur_tester.declare_tested_service() + \
+                         " does not match the required standard"
+        if tester_result is None:
+            print(error_template + " (ResultIsNone).")
+            return
+        if not isinstance(tester_result, list):
+            print(error_template + " (NotArray).")
+            return
+        if not tester_result:
+            #print(error_template + " (Empty array).")
+            return
+        else:
+            for result_obj in tester_result:
+                if "timestamp" not in result_obj or "item" not in result_obj or "item_type" \
+                        not in result_obj or "test_result" not in result_obj:
+                    print(error_template + " (FieldsMissing). CANNOT CONTINUE.")
+                    continue
+                if result_obj["item"] is None:
+                    print(error_template + " (ItemIsNone). CANNOT CONTINUE.")
+                    continue
+                if not isinstance(result_obj["timestamp"], float):
+                    print(error_template + " (ItemDateIsNotFloat). CANNOT CONTINUE.")
+                    continue
+                if len(str(int(result_obj["timestamp"]))) != 10:
+                    print(error_template + " (ItemDateIsNotTenDigitsIntPart). CANNOT CONTINUE.")
+                    continue
+                events_buffer.append(_to_model(result_obj, cur_test_start_timestamp, cur_test_end_timestamp))
+
+                if len(events_buffer) % self.batch_size == 0:
+                    self.report_test_result(cur_tester, events_buffer.copy(), execution_id,loop)
+                    events_buffer = []
+        if len(events_buffer) > 0:
+            self.report_test_result(cur_tester, events_buffer.copy(), execution_id,loop)
+
     def run_tests(self):
+        loop = asyncio.get_event_loop()
         execution_id = str(uuid.uuid4())
         lambda_start_timestamp = datetime.datetime.now()
+        client = boto3.client('ec2')
+        regions = [region['RegionName']
+                   for region in client.describe_regions()['Regions']]
         for i in range(0, len(self.tests)):
-            cur_test_start_timestamp = datetime.datetime.now()
             tester = self.tests[i]
-            print("INFO: Start " + str(tester) + " tester")
-            try:
-                cur_tester = tester()
-                tester_result = cur_tester.run_tests()
-                cur_test_end_timestamp = datetime.datetime.now()
-            except Exception as exTesterException:
-                print("WARN: The tester " + str(testers_module_names[i]) +
-                      " has crashed with the following exception during 'run_tests()'. SKIPPED: " +
-                      str(exTesterException))
-                continue
+            for region in regions:
+            #region='eu-west-1'
+                cur_tester = tester(region)
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    executor.submit(self.run_single_test, cur_tester, execution_id,loop)
 
-            error_template = "The result object from the tester " + cur_tester.declare_tested_service() + \
-                             " does not match the required standard"
-            if tester_result is None:
-                print(error_template + " (ResultIsNone).")
-                continue
-            if not isinstance(tester_result, list):
-                print(error_template + " (NotArray).")
-                continue
-            if not tester_result:
-                print(error_template + " (Empty array).")
-                continue
-            else:
-                for result_obj in tester_result:
-                    if "timestamp" not in result_obj or "item" not in result_obj or "item_type" \
-                            not in result_obj or "test_result" not in result_obj:
-                        print(error_template + " (FieldsMissing). CANNOT CONTINUE.")
-                        continue
-                    if result_obj["item"] is None:
-                        print(error_template + " (ItemIsNone). CANNOT CONTINUE.")
-                        continue
-                    if not isinstance(result_obj["timestamp"], float):
-                        print(error_template + " (ItemDateIsNotFloat). CANNOT CONTINUE.")
-                        continue
-                    if len(str(int(result_obj["timestamp"]))) != 10:
-                        print(error_template + " (ItemDateIsNotTenDigitsIntPart). CANNOT CONTINUE.")
-                        continue
-            security_report_test_result_list = list(map(lambda x: _to_model(x,
-                                                                            cur_test_start_timestamp,
-                                                                            cur_test_end_timestamp), tester_result))
-            context = SecurityReportContext(
-                provider=cur_tester.declare_tested_provider(),
-                service=cur_tester.declare_tested_service(),
-                execution_id=execution_id,
-                application_name=self.application_name,
-                computer_name="CoralogixServerlessLambda",
-                subsystem_name=self.subsystem_name
-            )
-            report = SecurityReport(context=context, test_results=security_report_test_result_list)
-            print("DEBUG: Sent " + str(len(security_report_test_result_list)) + " events for " +
-                  str(testers_module_names[i]) + " time taken " +
-                  str(cur_test_end_timestamp - cur_test_start_timestamp))
-            loop: AbstractEventLoop = asyncio.get_event_loop()
-            try:
-                loop.run_until_complete(
-                    self.client.post_security_report(api_key=self.api_key, security_report=report))
-            except Exception as ex:
-                print("ERROR: Failed to send " + str(len(security_report_test_result_list)) + " for tester " +
-                      str(testers_module_names[i]) + " events due to the following exception: " + str(ex))
-        print("Lambda taken " + str(datetime.datetime.now()-lambda_start_timestamp))
+        print("Lambda taken " + str(datetime.datetime.now() - lambda_start_timestamp))
+
+    def report_test_result(self,  cur_tester, events_buffer, execution_id,loop):
+        context = SecurityReportContext(
+            provider=cur_tester.declare_tested_provider(),
+            service=cur_tester.declare_tested_service(),
+            execution_id=execution_id,
+            application_name=self.application_name,
+            computer_name="CoralogixServerlessLambda",
+            subsystem_name=self.subsystem_name
+        )
+        report = SecurityReport(context=context, test_results=events_buffer)
+        # print("DEBUG: Sent " + str(len(events_buffer)) + " events for " +
+        #       cur_tester.declare_tested_service())
+        try:
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.client.post_security_report(api_key=self.api_key, security_report=report))
+        except Exception as ex:
+            print("ERROR: Failed to send " + str(len(events_buffer)) + " events for tester " +
+                  cur_tester.declare_tested_service() + " due to the following exception: " + str(ex))
         self.channel.close()
 
