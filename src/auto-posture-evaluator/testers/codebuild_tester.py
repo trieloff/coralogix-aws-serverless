@@ -1,14 +1,15 @@
 import time
 import boto3
 import interfaces
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self) -> None:
+    def __init__(self, region_name) -> None:
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.aws_codebuild_client = boto3.client('codebuild')
+        self.aws_codebuild_client = boto3.client('codebuild', region_name=region_name)
         self.codebuild_projects = self._get_all_codebuild_projects()
 
     def declare_tested_provider(self) -> str:
@@ -18,8 +19,16 @@ class Tester(interfaces.TesterInterface):
         return "codebuild"
 
     def run_tests(self) -> list:
-        return \
-            self.codebuild_project_build_artifacts_should_be_encrypted()
+        executor_list = []
+        return_values = []
+
+        with ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.codebuild_project_build_artifacts_should_be_encrypted))
+
+            for future in executor_list:
+                return_values.extend(future.result())
+
+        return return_values
 
     def _get_all_codebuild_projects(self):
         projects = []
