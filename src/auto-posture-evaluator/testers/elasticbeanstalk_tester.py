@@ -2,14 +2,15 @@ import time
 import boto3
 import jmespath
 import interfaces
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self) -> None:
+    def __init__(self, region_name) -> None:
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.aws_elasticbeanstalk_client = boto3.client('elasticbeanstalk')
+        self.aws_elasticbeanstalk_client = boto3.client('elasticbeanstalk', region_name=region_name)
         self.elasticbeanstalk_enviroments = self._get_all_environemnts()
 
     def declare_tested_provider(self) -> str:
@@ -19,11 +20,19 @@ class Tester(interfaces.TesterInterface):
         return "elasticbeanstalk"
 
     def run_tests(self) -> list:
-        return \
-            self.application_environment_should_have_load_balancer_access_logs() + \
-            self.enhanced_health_enabled() + \
-            self.application_env_has_managed_updates_enabled() + \
-            self.detect_environment_notification_configured()
+        executor_list = []
+        return_values = []
+
+        with ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.application_environment_should_have_load_balancer_access_logs))
+            executor_list.append(executor.submit(self.enhanced_health_enabled))
+            executor_list.append(executor.submit(self.application_env_has_managed_updates_enabled))
+            executor_list.append(executor.submit(self.detect_environment_notification_configured))
+
+            for future in executor_list:
+                return_values.extend(future.result())
+
+        return return_values
 
     def _append_elasticbeanstalk_test_result(self, item, item_type, test_name, issue_status):
         return {
