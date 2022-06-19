@@ -1,14 +1,15 @@
 import time
 import boto3
 import interfaces
+import concurrent.futures
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self) -> None:
+    def __init__(self, region_name) -> None:
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.aws_neptune_client = boto3.client('neptune')
+        self.aws_neptune_client = boto3.client('neptune', region_name=region_name)
         self.db_clusters = self._get_all_neptune_clusters()
 
     def declare_tested_provider(self) -> str:
@@ -18,9 +19,17 @@ class Tester(interfaces.TesterInterface):
         return "neptune"
 
     def run_tests(self) -> list:
-        return \
-            self.get_database_encryption_disabled() + \
-            self.get_neptune_cluster_audit_logs_disabled()
+        executor_list = []
+        return_value = []
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.get_database_encryption_disabled))
+            executor_list.append(executor.submit(self.get_neptune_cluster_audit_logs_disabled))
+
+            for future in executor_list:
+                return_value += future.result()
+
+        return return_value
+ 
 
     def _get_all_neptune_clusters(self):
         db_clusters = []
