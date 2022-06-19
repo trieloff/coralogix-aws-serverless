@@ -1,7 +1,7 @@
 import time
 import boto3
 import interfaces
-
+import concurrent.futures
 
 def _return_default_port_on_redshift_engines():
     return 5439
@@ -12,8 +12,8 @@ def _return_default_custom_master_username_on_redshift_engines():
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self):
-        self.aws_redshift_client = boto3.client('redshift')
+    def __init__(self, region_name):
+        self.aws_redshift_client = boto3.client('redshift', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
@@ -27,15 +27,21 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
-        return self.detect_redshift_cluster_encrypted() + \
-               self.detect_redshift_cluster_not_publicly_accessible() + \
-               self.detect_redshift_cluster_not_using_default_port() + \
-               self.detect_redshift_cluster_not_using_custom_master_username() + \
-               self.detect_redshift_cluster_using_logging() + \
-               self.detect_redshift_cluster_allow_version_upgrade() + \
-               self.detect_redshift_cluster_requires_ssl() + \
-               self.detect_redshift_cluster_not_using_ec2_classic() + \
-               self.get_redshift_cluster_not_encrypted_with_kms()
+        executor_list = []
+        return_value = []
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.detect_redshift_cluster_encrypted))
+            executor_list.append(executor.submit(self.detect_redshift_cluster_not_publicly_accessible))
+            executor_list.append(executor.submit(self.detect_redshift_cluster_not_using_default_port))
+            executor_list.append(executor.submit(self.detect_redshift_cluster_not_using_custom_master_username))
+            executor_list.append(executor.submit(self.detect_redshift_cluster_using_logging))
+            executor_list.append(executor.submit(self.detect_redshift_cluster_allow_version_upgrade))
+            executor_list.append(executor.submit(self.detect_redshift_cluster_requires_ssl))
+            executor_list.append(executor.submit(self.detect_redshift_cluster_not_using_ec2_classic))
+            executor_list.append(executor.submit(self.get_redshift_cluster_not_encrypted_with_kms))
+            for future in executor_list:
+                return_value += future.result()
+        return return_value
 
     def _append_redshift_test_result(self, redshift, test_name, issue_status):
         return {
