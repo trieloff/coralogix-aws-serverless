@@ -2,15 +2,16 @@ import time
 import boto3
 import interfaces
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self) -> None:
+    def __init__(self, region_name) -> None:
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.aws_emr_client = boto3.client('emr')
-        self.aws_kms_client = boto3.client('kms')
+        self.aws_emr_client = boto3.client('emr', region_name=region_name)
+        self.aws_kms_client = boto3.client('kms', region_name=region_name)
         self.emr_clusters = self._get_all_emr_clusters()
 
     def declare_tested_provider(self) -> str:
@@ -20,16 +21,24 @@ class Tester(interfaces.TesterInterface):
         return "emr"
 
     def run_tests(self) -> list:
-        return \
-            self.emr_cluster_should_have_a_security_configuration() + \
-            self.emr_cluster_should_use_kerberos_authentication() + \
-            self.emr_in_transit_and_at_rest_encryption_enabled() + \
-            self.emr_cluster_should_use_kms_for_s3_sse() + \
-            self.emr_cluster_should_upload_logs_to_s3() + \
-            self.emr_cluster_should_have_local_disk_encryption() + \
-            self.emr_cluster_should_have_encryption_in_transit_enabled() + \
-            self.emr_cluster_should_use_kms_for_s3_cse() + \
-            self.emr_cluster_encryption_should_be_enabled()
+        executor_list = []
+        return_values = []
+
+        with ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.emr_cluster_should_have_a_security_configuration))
+            executor_list.append(executor.submit(self.emr_cluster_should_use_kerberos_authentication))
+            executor_list.append(executor.submit(self.emr_in_transit_and_at_rest_encryption_enabled))
+            executor_list.append(executor.submit(self.emr_cluster_should_use_kms_for_s3_sse))
+            executor_list.append(executor.submit(self.emr_cluster_should_upload_logs_to_s3))
+            executor_list.append(executor.submit(self.emr_cluster_should_have_local_disk_encryption))
+            executor_list.append(executor.submit(self.emr_cluster_should_have_encryption_in_transit_enabled))
+            executor_list.append(executor.submit(self.emr_cluster_should_use_kms_for_s3_cse))
+            executor_list.append(executor.submit(self.emr_cluster_encryption_should_be_enabled))
+
+            for future in executor_list:
+                return_values.extend(future.result())
+
+        return return_values
 
     def _get_all_emr_clusters(self):
         clusters = []
