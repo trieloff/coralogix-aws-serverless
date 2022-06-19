@@ -89,8 +89,8 @@ class AutoPostureEvaluator:
             tester_result = cur_tester.run_tests()
             cur_test_end_timestamp = datetime.datetime.now()
         except Exception as exTesterException:
-            print("WARN: The tester has crashed with the following exception during 'run_tests()'. SKIPPED: " +
-                  str(exTesterException))
+            print("WARN: The tester " + cur_tester.declare_tested_service() + " has crashed with the following exception during 'run_tests()'. SKIPPED: " +
+                str(exTesterException))
             return
 
         error_template = "The result object from the tester " + cur_tester.declare_tested_service() + \
