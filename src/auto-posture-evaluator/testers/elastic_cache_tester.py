@@ -1,7 +1,7 @@
 import time
 import boto3
 import interfaces
-
+import concurrent.futures
 
 def _return_default_port_on_elasticache_engines(cluster_type):
     if cluster_type == 'redis':
@@ -13,8 +13,8 @@ def _return_default_port_on_elasticache_engines(cluster_type):
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self):
-        self.aws_elasticache_client = boto3.client('elasticache')
+    def __init__(self, region_name):
+        self.aws_elasticache_client = boto3.client('elasticache', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
@@ -28,11 +28,18 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
-        return self.detect_elasticache_cluster_not_using_default_port() + \
-               self.detect_elasticache_cluster_using_vpc() + \
-               self.detect_elasticache_cluster_using_latest_engine_version() + \
-               self.detect_elastiache_redis_in_transit_encryption_disabled() + \
-               self.detect_elasticache_redis_at_rest_encryption_disabled()
+        executor_list = []
+        return_value = []
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor_list.append(executor.submit(self.detect_elasticache_cluster_not_using_default_port))
+            executor_list.append(executor.submit(self.detect_elasticache_cluster_using_vpc))
+            executor_list.append(executor.submit(self.detect_elasticache_cluster_using_latest_engine_version))
+            executor_list.append(executor.submit(self.detect_elastiache_redis_in_transit_encryption_disabled))
+            executor_list.append(executor.submit(self.detect_elasticache_redis_at_rest_encryption_disabled))
+            for future in executor_list:
+                return_value += future.result()
+        return return_value
+
 
     def _append_elasticache_test_result(self, elasticache, test_name, issue_status):
         return {
