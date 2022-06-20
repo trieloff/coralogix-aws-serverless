@@ -1,7 +1,8 @@
 import time
+from concurrent.futures import ThreadPoolExecutor
+
 import boto3
 import interfaces
-from concurrent.futures import ThreadPoolExecutor
 
 
 class Tester(interfaces.TesterInterface):
@@ -28,7 +29,8 @@ class Tester(interfaces.TesterInterface):
             executor_list.append(executor.submit(self.detect_unencrypted_cloudfront_to_origin_server_connection))
             executor_list.append(executor.submit(self.detect_encrypted_data_in_transit_using_tls_higher_version))
             executor_list.append(executor.submit(self.detect_unencrypted_cloudfront_to_viewer_connection))
-            executor_list.append(executor.submit(self.detect_cloudfront_enable_origin_access_identity_for_cloudfront_distributions_with_s3_origin))
+            executor_list.append(executor.submit(
+                self.detect_cloudfront_enable_origin_access_identity_for_cloudfront_distributions_with_s3_origin))
 
             for future in executor_list:
                 return_values.extend(future.result())
@@ -42,12 +44,12 @@ class Tester(interfaces.TesterInterface):
 
         )
         if 'DistributionList' in response and response['DistributionList'] and 'Items' in response[
-                'DistributionList'] and response['DistributionList'][
-                'Items']:
+            'DistributionList'] and response['DistributionList'][
+            'Items']:
             cloud_front_details.extend(response['DistributionList'][
-                'Items'])
+                                           'Items'])
         if 'DistributionList' in response and response['DistributionList'] and 'IsTruncated' in response[
-                'DistributionList'] and response['DistributionList']['IsTruncated']:
+            'DistributionList'] and response['DistributionList']['IsTruncated']:
             while (response['DistributionList']['IsTruncated']):
                 response = self.aws_cloudfront_client.list_distributions(
                     Marker=response['DistributionList']['NextMarker'],
@@ -58,7 +60,7 @@ class Tester(interfaces.TesterInterface):
                         response['DistributionList'][
                             'Items']:
                     cloud_front_details.extend(response['DistributionList'][
-                        'Items'])
+                                                   'Items'])
         return cloud_front_details
 
     def _append_cloudfront_test_result(self, cloud_front_id, test_name, issue_status):
@@ -149,25 +151,20 @@ class Tester(interfaces.TesterInterface):
         result = []
         test_name = 'aws_cloudfront_enable_origin_access_identity_for_cloudfront_distributions_with_s3_origin'
         for items_dict in self.all_cloud_front_details:
-            issue_found = False
             if 'Origins' in items_dict and 'Items' in items_dict['Origins'] and items_dict['Origins']['Items']:
                 for origin_dict in items_dict['Origins']['Items']:
-                    if 'S3OriginConfig' not in origin_dict or ('S3OriginConfig' in origin_dict and (
+                    if 'S3OriginConfig' in origin_dict and (
                             ('OriginAccessIdentity' in origin_dict['S3OriginConfig']
                              and not origin_dict['S3OriginConfig'][
-                                 'OriginAccessIdentity']) or not origin_dict[
-                                'S3OriginConfig'] or 'OriginAccessIdentity' not in origin_dict['S3OriginConfig'])):
-                        issue_found = True
-                        break
-            else:
-                issue_found = True
-            if issue_found:
-                result.append(
-                    self._append_cloudfront_test_result(items_dict['Id'], test_name,
-                                                        'issue_found'))
-            else:
-                result.append(
-                    self._append_cloudfront_test_result(items_dict['Id'], test_name,
-                                                        'no_issue_found'))
+                                        'OriginAccessIdentity']) or not origin_dict[
+                        'S3OriginConfig'] or 'OriginAccessIdentity' not in origin_dict['S3OriginConfig']):
+                        result.append(
+                            self._append_cloudfront_test_result(items_dict['Id'] + '@@' + origin_dict['Id'], test_name,
+                                                                'issue_found'))
+                    else:
+                        result.append(
+                            self._append_cloudfront_test_result(items_dict['Id'] + '@@' + origin_dict['Id'], test_name,
+                                                                'no_issue_found'))
 
         return result
+
