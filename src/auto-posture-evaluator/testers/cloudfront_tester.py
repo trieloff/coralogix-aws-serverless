@@ -6,13 +6,14 @@ import interfaces
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self, region_name):
+    def __init__(self, region_name='global'):
         self.aws_cloudfront_client = boto3.client('cloudfront', region_name=region_name)
         self.cache = {}
+        self.region_name = region_name
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.all_cloud_front_details = self._list_all_cloud_front()
+        self.all_cloud_front_details = []
 
     def declare_tested_service(self) -> str:
         return 'cloudfront'
@@ -21,6 +22,9 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
+        if self.region_name != 'global':
+            return []
+        self.all_cloud_front_details = self._list_all_cloud_front()
         executor_list = []
         return_values = []
 
@@ -72,7 +76,8 @@ class Tester(interfaces.TesterInterface):
             "item": cloud_front_id,
             "item_type": "cloud_front",
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.region_name
         }
 
     def detect_waf_enabled_disabled_distribution(self):
