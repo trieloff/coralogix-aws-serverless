@@ -11,7 +11,6 @@ from model import SecurityReportTestResult, SecurityReportIngestionServiceStub, 
     SecurityReportTestResultResult
 from model.helper import struct_from_dict
 import concurrent.futures
-import boto3
 
 testers_module_names = []
 if not os.environ.get('TESTER_LIST'):
@@ -77,6 +76,13 @@ class AutoPostureEvaluator:
         self.application_name = os.environ.get('APPLICATION_NAME', 'NO_APP_NAME')
         self.subsystem_name = os.environ.get('SUBSYSTEM_NAME', 'NO_SUB_NAME')
         self.batch_size = 5000
+        self.regions = []
+        if not os.environ.get('REGION_LIST'):
+            self.regions = ['eu-north-1', 'ap-south-1', 'eu-west-3', 'eu-west-2', 'eu-west-1', 'ap-northeast-3'
+                ,'ap-northeast-2', 'ap-northeast-1', 'sa-east-1', 'ca-central-1', 'ap-southeast-1'
+                , 'ap-southeast-2', 'eu-central-1', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2','global']
+        else:
+            self.regions = os.environ.get('REGION_LIST').split(',')
         for tester_module in testers_module_names:
             if "Tester" in sys.modules[tester_module].__dict__:
                 self.tests.append(sys.modules[tester_module].__dict__["Tester"])
@@ -131,16 +137,14 @@ class AutoPostureEvaluator:
         loop = asyncio.get_event_loop()
         execution_id = str(uuid.uuid4())
         lambda_start_timestamp = datetime.datetime.now()
-        client = boto3.client('ec2')
-        regions = [region['RegionName']
-                   for region in client.describe_regions()['Regions']]
         for i in range(0, len(self.tests)):
             tester = self.tests[i]
-            for region in regions:
-            #region='eu-west-1'
+            for region in self.regions:
                 cur_tester = tester(region)
+                print("INFO:Start tester " + cur_tester.declare_tested_service() +" for region "+region)
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     executor.submit(self.run_single_test, cur_tester, execution_id,loop)
+
 
         print("Lambda taken " + str(datetime.datetime.now() - lambda_start_timestamp))
 
