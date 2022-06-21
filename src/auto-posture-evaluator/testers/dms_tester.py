@@ -8,12 +8,14 @@ import interfaces
 
 class Tester(interfaces.TesterInterface):
     def __init__(self, region_name):
+        self.ssm = boto3.client('ssm')
+        self.region_name = region_name
         self.aws_dms_client = boto3.client('dms', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.all_dms_replica_instances = self._return_all_dms_replica_instances()
+        self.all_dms_replica_instances = []
 
     def declare_tested_service(self) -> str:
         return 'dms'
@@ -22,6 +24,9 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return []
+        self.all_dms_replica_instances = self._return_all_dms_replica_instances()
         executor_list = []
         return_value = []
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -36,6 +41,14 @@ class Tester(interfaces.TesterInterface):
                 return_value += future.result()
         return return_value
 
+    def _get_regions(self):
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            region_list.append(p['Value'] for p in page['Parameters'])
+        return region_list
+
     def _append_dms_test_result(self, dms_data, test_name, issue_status):
         return {
             "user": self.user_id,
@@ -45,7 +58,8 @@ class Tester(interfaces.TesterInterface):
             "item": dms_data['ReplicationInstanceIdentifier'],
             "item_type": "dms",
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.region_name
         }
 
     def _return_all_dms_replica_instances(self):
