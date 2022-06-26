@@ -12,6 +12,8 @@ class Tester(interfaces.TesterInterface):
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
         self.v2_domain_names = self._return_all_v2_domain_names()
+        self.region_name=region_name
+        self.ssm = boto3.client('ssm')
 
     def declare_tested_service(self) -> str:
         return 'apigatewayv2'
@@ -20,6 +22,8 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return None
         executor_list = []
         return_value = []
 
@@ -29,6 +33,15 @@ class Tester(interfaces.TesterInterface):
                 return_value += future.result()
 
         return return_value
+
+    def _get_regions(self) -> list:
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
+        return region_list
 
     def _append_apigatewayv2_test_result(self, apigatewayv2_name, test_name, issue_status):
         return {

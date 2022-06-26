@@ -7,6 +7,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 class Tester(interfaces.TesterInterface):
     def __init__(self, region_name) -> None:
+        self.ssm = boto3.client('ssm')
+        self.region_name = region_name
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
@@ -20,6 +22,8 @@ class Tester(interfaces.TesterInterface):
         return "elasticbeanstalk"
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return None
         executor_list = []
         return_values = []
 
@@ -33,6 +37,15 @@ class Tester(interfaces.TesterInterface):
                 return_values.extend(future.result())
 
         return return_values
+
+    def _get_regions(self) -> list:
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
+        return region_list
 
     def _append_elasticbeanstalk_test_result(self, item, item_type, test_name, issue_status):
         return {

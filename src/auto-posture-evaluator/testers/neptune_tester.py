@@ -11,6 +11,8 @@ class Tester(interfaces.TesterInterface):
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
         self.aws_neptune_client = boto3.client('neptune', region_name=region_name)
         self.db_clusters = self._get_all_neptune_clusters()
+        self.ssm = boto3.client('ssm')
+        self.region_name = region_name
 
     def declare_tested_provider(self) -> str:
         return "aws"
@@ -19,6 +21,8 @@ class Tester(interfaces.TesterInterface):
         return "neptune"
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return None
         executor_list = []
         return_value = []
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -29,7 +33,15 @@ class Tester(interfaces.TesterInterface):
                 return_value += future.result()
 
         return return_value
- 
+
+    def _get_regions(self) -> list:
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
+        return region_list
 
     def _get_all_neptune_clusters(self):
         db_clusters = []

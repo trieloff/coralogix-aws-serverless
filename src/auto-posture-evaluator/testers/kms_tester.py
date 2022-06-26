@@ -12,6 +12,8 @@ class Tester(interfaces.TesterInterface):
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
         self.kms_keys = []
+        self.ssm = boto3.client('ssm')
+        self.region_name = region_name
 
     def declare_tested_provider(self) -> str:
         return 'aws'
@@ -20,6 +22,8 @@ class Tester(interfaces.TesterInterface):
         return 'kms'
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return None
         self.kms_keys = self._get_kms_keys()
 
         executor_list = []
@@ -45,6 +49,15 @@ class Tester(interfaces.TesterInterface):
             "test_name": test_name,
             "test_result": issue_status
         }
+
+    def _get_regions(self) -> list:
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
+        return region_list
 
     def _get_kms_keys(self):
         keys = []

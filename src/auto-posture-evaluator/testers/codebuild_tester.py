@@ -11,6 +11,8 @@ class Tester(interfaces.TesterInterface):
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
         self.aws_codebuild_client = boto3.client('codebuild', region_name=region_name)
         self.codebuild_projects = self._get_all_codebuild_projects()
+        self.ssm = boto3.client('ssm')
+        self.region_name = region_name
 
     def declare_tested_provider(self) -> str:
         return "aws"
@@ -19,6 +21,8 @@ class Tester(interfaces.TesterInterface):
         return "codebuild"
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return None
         executor_list = []
         return_values = []
 
@@ -29,6 +33,15 @@ class Tester(interfaces.TesterInterface):
                 return_values.extend(future.result())
 
         return return_values
+
+    def _get_regions(self) -> list:
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
+        return region_list
 
     def _get_all_codebuild_projects(self):
         projects = []

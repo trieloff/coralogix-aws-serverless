@@ -17,6 +17,8 @@ class Tester(interfaces.TesterInterface):
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
         self.ebs_volumes = []
+        self.ssm = boto3.client('ssm')
+        self.region_name = region_name
 
     def declare_tested_service(self) -> str:
         return 'ebs'
@@ -25,6 +27,8 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return None
         self.ebs_volumes = self._get_ebs_volumes()
         executor_list = []
         return_value = []
@@ -38,6 +42,16 @@ class Tester(interfaces.TesterInterface):
             for future in executor_list:
                 return_value += future.result()
         return return_value
+
+    def _get_regions(self) -> list:
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
+        return region_list
+
 
     def _get_ebs_volumes(self):
         volumes = []

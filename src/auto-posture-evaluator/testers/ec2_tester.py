@@ -7,18 +7,18 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self, region_name) -> None:
+    def __init__(self, region_name: str) -> None:
+        self.aws_region = region_name
+        self.all_aws_regions = self._get_all_aws_regions()
         self.aws_ec2_client = boto3.client('ec2', region_name=region_name)
         self.aws_ec2_resource = boto3.resource('ec2', region_name=region_name)
-        self.config_client = boto3.client('config', region_name=region_name)
+        self.aws_nfw_client = boto3.client('network-firewall', region_name=region_name)
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.security_groups = self.aws_ec2_resource.security_groups.all()
-        self.vpcs = self._get_all_vpcs()
-        self.set_security_group = self._get_all_security_group_ids(self.security_groups)
-        self.ec2_instances = self._get_all_ec2_instances(self.aws_ec2_client)
-        self.aws_nfw_client = boto3.client('network-firewall', region_name=region_name)
+        self.security_groups = []
+        self.set_security_group = []
+        self.ec2_instances = []
         self.sensitive_instance_tag = os.environ.get('AUTOPOSTURE_EC2_SENSITIVE_TAG')
         self.per_region_max_cpu_count_diff = os.environ.get('AUTOPOSTURE_PER_REGION_MAX_CPU_COUNT_DIFF')
 
@@ -29,59 +29,75 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
-        all_inbound_permissions = self._get_all_inbound_permissions_by_security_groups(self.security_groups)
-        all_outbound_permissions = self._get_all_outbound_permissions_by_security_groups(self.security_groups)
-        region_names = self._get_ec2_region_names()
+        all_aws_regions = self._get_all_aws_regions()
 
-        executor_list = []
-        return_values = []
-        with ThreadPoolExecutor() as executor:
-            executor_list.append(executor.submit(self.get_inbound_http_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_https_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_mongodb_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_mysql_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_mssql_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_ssh_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_rdp_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_dns_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_telnet_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_rpc_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_icmp_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_security_group_allows_ingress_from_anywhere, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_vpc_default_security_group_restrict_traffic))
-            executor_list.append(executor.submit(self.get_outbound_access_to_all_ports, all_outbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_oracle_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_ftp_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_smtp_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_elasticsearch_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_tcp_netbios_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_udp_netbios, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_inbound_cifs_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_instance_uses_metadata_service_version_2, self.ec2_instances))
-            executor_list.append(executor.submit(self.get_security_group_allows_https_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_security_group_allows_inbound_access_from_ports_higher_than_1024, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_unrestricted_admin_port_access_in_network_acl))
-            executor_list.append(executor.submit(self.get_internet_gateway_presence_detected, self.ec2_instances))
-            executor_list.append(executor.submit(self.get_sensitive_instance_tenancy_not_dedicated, self.ec2_instances))
-            executor_list.append(executor.submit(self.get_aws_config_not_enabled_for_all_regions, region_names))
-            executor_list.append(executor.submit(self.get_nearing_regional_limit_for_elastic_ip_addresses, region_names))
-            executor_list.append(executor.submit(self.get_ec2_instance_iam_role_not_enabled, self.ec2_instances))
-            executor_list.append(executor.submit(self.get_security_group_allows_inbound_traffic, all_inbound_permissions))
-            executor_list.append(executor.submit(self.get_instance_with_upcoming_system_maintenance_scheduled_event, self.ec2_instances))
-            executor_list.append(executor.submit(self.get_instance_with_upcoming_instance_stop_scheduled_event, self.ec2_instances))
-            executor_list.append(executor.submit(self.get_instance_with_upcoming_instance_reboot_scheduled_event, self.ec2_instances))
-            executor_list.append(executor.submit(self.get_instance_with_upcoming_system_reboot_scheduled_event, self.ec2_instances))
-            executor_list.append(executor.submit(self.get_region_nearing_limits_of_ec2_instances, region_names))
-            executor_list.append(executor.submit(self.get_elastic_ip_in_use))
-            executor_list.append(executor.submit(self.get_unrestricted_mysql_access, all_inbound_permissions))
-            executor_list.append(executor.submit(self.detect_classic_ec2_instances))
-            executor_list.append(executor.submit(self.get_security_group_should_allow_access_to_specific_private_networks_only))
-            executor_list.append(executor.submit(self.get_network_firewall_used))
+        if any([self.aws_region == region for region in all_aws_regions]):
+            self.security_groups = self.aws_ec2_resource.security_groups.all()
+            self.set_security_group = self._get_all_security_group_ids(self.security_groups)
+            all_inbound_permissions = self._get_all_inbound_permissions_by_security_groups(self.security_groups)
+            all_outbound_permissions = self._get_all_outbound_permissions_by_security_groups(self.security_groups)
+            self.ec2_instances = self._get_all_ec2_instances(self.aws_ec2_client)
+            region_names = self._get_ec2_region_names()
 
-            for future in executor_list:
-                return_values.extend(future.result())
+            executor_list = []
+            return_values = []
+            with ThreadPoolExecutor() as executor:
+                executor_list.append(executor.submit(self.get_inbound_http_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_https_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_mongodb_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_mysql_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_mssql_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_ssh_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_rdp_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_dns_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_telnet_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_rpc_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_icmp_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_security_group_allows_ingress_from_anywhere, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_vpc_default_security_group_restrict_traffic))
+                executor_list.append(executor.submit(self.get_outbound_access_to_all_ports, all_outbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_oracle_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_ftp_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_smtp_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_elasticsearch_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_tcp_netbios_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_udp_netbios, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_inbound_cifs_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_instance_uses_metadata_service_version_2, self.ec2_instances))
+                executor_list.append(executor.submit(self.get_security_group_allows_https_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_security_group_allows_inbound_access_from_ports_higher_than_1024, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_unrestricted_admin_port_access_in_network_acl))
+                executor_list.append(executor.submit(self.get_internet_gateway_presence_detected, self.ec2_instances))
+                executor_list.append(executor.submit(self.get_sensitive_instance_tenancy_not_dedicated, self.ec2_instances))
+                executor_list.append(executor.submit(self.get_aws_config_not_enabled_for_all_regions, region_names))
+                executor_list.append(executor.submit(self.get_nearing_regional_limit_for_elastic_ip_addresses, region_names))
+                executor_list.append(executor.submit(self.get_ec2_instance_iam_role_not_enabled, self.ec2_instances))
+                executor_list.append(executor.submit(self.get_security_group_allows_inbound_traffic, all_inbound_permissions))
+                executor_list.append(executor.submit(self.get_instance_with_upcoming_system_maintenance_scheduled_event, self.ec2_instances))
+                executor_list.append(executor.submit(self.get_instance_with_upcoming_instance_stop_scheduled_event, self.ec2_instances))
+                executor_list.append(executor.submit(self.get_instance_with_upcoming_instance_reboot_scheduled_event, self.ec2_instances))
+                executor_list.append(executor.submit(self.get_instance_with_upcoming_system_reboot_scheduled_event, self.ec2_instances))
+                executor_list.append(executor.submit(self.get_region_nearing_limits_of_ec2_instances, region_names))
+                executor_list.append(executor.submit(self.get_elastic_ip_in_use))
+                executor_list.append(executor.submit(self.get_unrestricted_mysql_access, all_inbound_permissions))
+                executor_list.append(executor.submit(self.detect_classic_ec2_instances))
+                executor_list.append(executor.submit(self.get_security_group_should_allow_access_to_specific_private_networks_only))
+                executor_list.append(executor.submit(self.get_network_firewall_used))
 
-        return return_values
+                for future in executor_list:
+                    return_values.extend(future.result())
+
+            return return_values
+        else:
+            return None
+
+    def _get_all_aws_regions(self):
+        regions = []
+        response = boto3.client('ec2', region_name='us-east-1').describe_regions(AllRegions=True)
+        for region in response['Regions']:
+            regions.append(region['RegionName'])
+
+        return regions
 
     def _get_result_object(self, item, item_type, test_name, issue_status):
         return {
@@ -92,7 +108,8 @@ class Tester(interfaces.TesterInterface):
             "item": item,
             "item_type": item_type,
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.aws_region
         }
 
     def _get_all_security_group_ids(self, instances) -> Set:
@@ -417,9 +434,9 @@ class Tester(interfaces.TesterInterface):
     def get_vpc_default_security_group_restrict_traffic(self):
         test_name = "aws_ec2_vpc_default_security_group_restrict_all_traffic"
         result = []
-
+        vpcs = self._get_all_vpcs()
         all_vpcs = []
-        for vpc in self.vpcs:
+        for vpc in vpcs:
             all_vpcs.append(vpc['VpcId'])
         all_vpcs = set(all_vpcs)
 
