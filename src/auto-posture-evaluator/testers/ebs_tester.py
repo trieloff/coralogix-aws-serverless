@@ -38,7 +38,7 @@ class Tester(interfaces.TesterInterface):
             executor_list.append(executor.submit(self.get_volume_does_not_have_recent_snapshots, self.ebs_volumes))
             executor_list.append(
                 executor.submit(self.get_volume_not_encrypted_with_kms_customer_keys, self.ebs_volumes))
-            executor_list.append(executor.submit(self.get_volume_snapshots_are_public))
+            #executor_list.append(executor.submit(self.get_volume_snapshots_are_public))
             for future in executor_list:
                 return_value += future.result()
         return return_value

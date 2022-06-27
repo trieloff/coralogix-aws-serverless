@@ -9,7 +9,7 @@ class Tester(interfaces.TesterInterface):
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.aws_codebuild_client = boto3.client('codebuild', region_name=region_name)
+        self.aws_codebuild_client = boto3.client('codebuild')
         self.codebuild_projects = self._get_all_codebuild_projects()
         self.ssm = boto3.client('ssm')
         self.region_name = region_name
