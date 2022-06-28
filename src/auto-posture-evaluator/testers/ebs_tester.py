@@ -1,6 +1,5 @@
-from inspect import Attribute
 import time
-from typing import Dict, List, Set
+from typing import List
 import boto3
 import interfaces
 import datetime as dt
@@ -8,8 +7,10 @@ from datetime import datetime
 import os
 import concurrent.futures
 
+
 class Tester(interfaces.TesterInterface):
-    def __init__(self, region_name) -> None:
+    def __init__(self, region_name: str) -> None:
+        self.aws_region = region_name
         self.aws_ec2_client = boto3.client('ec2', region_name=region_name)
         self.aws_ec2_resource = boto3.resource('ec2', region_name=region_name)
         self.aws_kms_client = boto3.client('kms', region_name=region_name)
@@ -25,19 +26,47 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
-        self.ebs_volumes = self._get_ebs_volumes()
-        executor_list = []
-        return_value = []
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            executor_list.append(executor.submit(self.get_volume_is_not_encrypted, self.ebs_volumes))
-            executor_list.append(executor.submit(self.get_volume_attached_to_ec2, self.ebs_volumes))
-            executor_list.append(executor.submit(self.get_volume_does_not_have_recent_snapshots, self.ebs_volumes))
-            executor_list.append(
-                executor.submit(self.get_volume_not_encrypted_with_kms_customer_keys, self.ebs_volumes))
-            executor_list.append(executor.submit(self.get_volume_snapshots_are_public))
-            for future in executor_list:
-                return_value += future.result()
-        return return_value
+        all_regions = self._get_all_aws_regions()
+
+        if any([self.aws_region == region for region in all_regions]):
+            self.ebs_volumes = self._get_ebs_volumes()
+            executor_list = []
+            return_value = []
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                executor_list.append(executor.submit(self.get_volume_is_not_encrypted, self.ebs_volumes))
+                executor_list.append(executor.submit(self.get_volume_attached_to_ec2, self.ebs_volumes))
+                executor_list.append(executor.submit(self.get_volume_does_not_have_recent_snapshots, self.ebs_volumes))
+                executor_list.append(
+                    executor.submit(self.get_volume_not_encrypted_with_kms_customer_keys, self.ebs_volumes))
+                executor_list.append(executor.submit(self.get_volume_snapshots_are_public))
+                for future in executor_list:
+                    return_value += future.result()
+            return return_value
+        else:
+            return None
+
+    def _append_ebs_test_result(self, item, item_type, test_name, issue_status):
+        return {
+            "user": self.user_id,
+            "account_arn": self.account_arn,
+            "account": self.account_id,
+            "timestamp": time.time(),
+            "item": item,
+            "item_type": item_type,
+            "test_name": test_name,
+            "test_result": issue_status,
+            "region": self.aws_region
+        }
+
+    def _get_all_aws_regions(self):
+        all_regions = []
+        ec2_client = boto3.client('ec2', region_name='us-east-1')
+        response = ec2_client.describe_regions(AllRegions=True)
+
+        for i in response['Regions']:
+            all_regions.append(i['RegionName'])
+
+        return all_regions
 
     def _get_ebs_volumes(self):
         volumes = []
@@ -60,27 +89,9 @@ class Tester(interfaces.TesterInterface):
         for volume in volumes:
             volume_id = volume['VolumeId']
             if not volume['Encrypted']:
-                result.append({
-                    "user": self.user_id,
-                    "account_arn": self.account_arn,
-                    "account": self.account_id,
-                    "timestamp": time.time(),
-                    "item": volume_id,
-                    "item_type": "ebs_volume",
-                    "test_name": test_name,
-                    "test_result": "issue_found"
-                })
+                result.append(self._append_ebs_test_result(volume_id, "ebs_volume", test_name, "issue_found"))
             else:
-                result.append({
-                    "user": self.user_id,
-                    "account_arn": self.account_arn,
-                    "account": self.account_id,
-                    "timestamp": time.time(),
-                    "item": volume_id,
-                    "item_type": "ebs_volume",
-                    "test_name": test_name,
-                    "test_result": "no_issue_found"
-                })
+                result.append(self._append_ebs_test_result(volume_id, "ebs_volume", test_name, "no_issue_found"))
 
         return result
 
@@ -92,27 +103,9 @@ class Tester(interfaces.TesterInterface):
             volume_id = volume['VolumeId']
             attachments = volume['Attachments']
             if len(attachments) > 0:
-                result.append({
-                    "user": self.user_id,
-                    "account_arn": self.account_arn,
-                    "account": self.account_id,
-                    "timestamp": time.time(),
-                    "item": volume_id,
-                    "item_type": "ebs_volume",
-                    "test_name": test_name,
-                    "test_result": "issue_found"
-                })
+                result.append(self._append_ebs_test_result(volume_id, "ebs_volume", test_name, "issue_found"))
             else:
-                result.append({
-                    "user": self.user_id,
-                    "account_arn": self.account_arn,
-                    "account": self.account_id,
-                    "timestamp": time.time(),
-                    "item": volume_id,
-                    "item_type": "ebs_volume",
-                    "test_name": test_name,
-                    "test_result": "no_issue_found"
-                })
+                result.append(self._append_ebs_test_result(volume_id, "ebs_volume", test_name, "no_issue_found"))
 
         return result
 
@@ -144,27 +137,9 @@ class Tester(interfaces.TesterInterface):
                     recent_snapshot_found = True
                     break
             if recent_snapshot_found:
-                result.append({
-                    "user": self.user_id,
-                    "account_arn": self.account_arn,
-                    "account": self.account_id,
-                    "timestamp": time.time(),
-                    "item": volume_id,
-                    "item_type": "ebs_volume",
-                    "test_name": test_name,
-                    "test_result": "no_issue_found"
-                })
+                result.append(self._append_ebs_test_result(volume_id, "ebs_volume", test_name, "no_issue_found"))
             else:
-                result.append({
-                    "user": self.user_id,
-                    "account_arn": self.account_arn,
-                    "account": self.account_id,
-                    "timestamp": time.time(),
-                    "item": volume_id,
-                    "item_type": "ebs_volume",
-                    "test_name": test_name,
-                    "test_result": "issue_found"
-                })
+                result.append(self._append_ebs_test_result(volume_id, "ebs_volume", test_name, "issue_found"))
         return result
 
     def get_volume_not_encrypted_with_kms_customer_keys(self, volumes):
@@ -174,16 +149,7 @@ class Tester(interfaces.TesterInterface):
         for volume in volumes:
             volume_id = volume['VolumeId']
             if not volume['Encrypted'] or not volume['KmsKeyId']:
-                result.append({
-                    "user": self.user_id,
-                    "account_arn": self.account_arn,
-                    "account": self.account_id,
-                    "timestamp": time.time(),
-                    "item": volume_id,
-                    "item_type": "ebs_volume",
-                    "test_name": test_name,
-                    "test_result": "issue_found"
-                })
+                result.append(self._append_ebs_test_result(volume_id, "ebs_volume", test_name, "issue_found"))
             else:
                 key_id = volume['KmsKeyId']
                 kms_response = self.aws_kms_client.list_aliases(KeyId=key_id)
@@ -193,27 +159,9 @@ class Tester(interfaces.TesterInterface):
                         issue_found = True
                         break
                 if not issue_found:
-                    result.append({
-                        "user": self.user_id,
-                        "account_arn": self.account_arn,
-                        "account": self.account_id,
-                        "timestamp": time.time(),
-                        "item": volume_id,
-                        "item_type": "ebs_volume",
-                        "test_name": test_name,
-                        "test_result": "no_issue_found"
-                    })
+                    result.append(self._append_ebs_test_result(volume_id, "ebs_volume", test_name, "no_issue_found"))
                 else:
-                    result.append({
-                        "user": self.user_id,
-                        "account_arn": self.account_arn,
-                        "account": self.account_id,
-                        "timestamp": time.time(),
-                        "item": volume_id,
-                        "item_type": "ebs_volume",
-                        "test_name": test_name,
-                        "test_result": "issue_found"
-                    })
+                    result.append(self._append_ebs_test_result(volume_id, "ebs_volume", test_name, "issue_found"))
         return result
 
     def get_volume_snapshots_are_public(self):
@@ -226,27 +174,9 @@ class Tester(interfaces.TesterInterface):
             snapshot_id = snapshot["SnapshotId"]
             attrs = self.aws_ec2_client.describe_snapshot_attribute(SnapshotId=snapshot_id,
                                                                     Attribute="createVolumePermission")
-            if any([attr["Group"] == "all" for attr in attrs["CreateVolumePermissions"]]):
-                result.append({
-                    "user": self.user_id,
-                    "account_arn": self.account_arn,
-                    "account": self.account_id,
-                    "timestamp": time.time(),
-                    "item": snapshot_id,
-                    "item_type": "ebs_snapshot",
-                    "test_name": test_name,
-                    "test_result": "issue_found"
-                })
+            if any([attr.get("Group", "") == "all" for attr in attrs["CreateVolumePermissions"]]):
+                result.append(self._append_ebs_test_result(snapshot_id, "ebs_snapshot", test_name, "issue_found"))
             else:
-                result.append({
-                    "user": self.user_id,
-                    "account_arn": self.account_arn,
-                    "account": self.account_id,
-                    "timestamp": time.time(),
-                    "item": snapshot_id,
-                    "item_type": "ebs_snapshot",
-                    "test_name": test_name,
-                    "test_result": "no_issue_found"
-                })
-        return result
+                result.append(self._append_ebs_test_result(snapshot_id, "ebs_snapshot", test_name, "no_issue_found"))
 
+        return result
