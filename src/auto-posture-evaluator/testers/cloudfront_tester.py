@@ -23,7 +23,7 @@ class Tester(interfaces.TesterInterface):
 
     def run_tests(self) -> list:
         if self.region_name != 'global':
-            return []
+            return None
         self.all_cloud_front_details = self._list_all_cloud_front()
         executor_list = []
         return_values = []
