@@ -12,12 +12,14 @@ def _format_string_to_json(text):
 
 class Tester(interfaces.TesterInterface):
     def __init__(self, region_name):
+        self.ssm = boto3.client('ssm')
+        self.region_name = region_name
         self.aws_vpc_client = boto3.client('ec2', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.all_vpc_details = self._get_all_vpc()
+        self.all_vpc_details = list()
 
     def declare_tested_service(self) -> str:
         return 'vpc'
@@ -26,6 +28,10 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return None
+        self.all_vpc_details = self._get_all_vpc()
+
         executor_list = []
         return_value = []
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -42,6 +48,15 @@ class Tester(interfaces.TesterInterface):
             for future in executor_list:
                 return_value += future.result()
         return return_value
+
+    def _get_regions(self) -> list:
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
+        return region_list
 
     def _get_all_vpc(self):
         response = self.aws_vpc_client.describe_vpcs()
@@ -65,7 +80,8 @@ class Tester(interfaces.TesterInterface):
             "item": vpc_detail['VpcId'],
             "item_type": "vpc",
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.region_name
         }
 
     def _append_epi_test_result(self, eip_detail, test_name, issue_status):
@@ -77,7 +93,8 @@ class Tester(interfaces.TesterInterface):
             "item": eip_detail['AllocationId'],
             "item_type": "vpc_elastic_ip",
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.region_name
         }
 
     def _check_logging_status(self, test_name, ):
@@ -244,7 +261,7 @@ class Tester(interfaces.TesterInterface):
 
     def detect_network_acl_restriction_status(self):
         return self._check_ingress_administration_ports_range_for_network_acls_inbound_rule(
-            'aws_vpc_network_acl_do_not_allow_ingress_from_0.0.0.0/0_to_remote_server_administration_ports')
+            'aws_vpc_network_acl_do_not_allow_ingress_from_0.0.0.0_to_remote_server_administration_ports')
 
     def detect_default_nacl_used(self):
         return self._check_default_nacl_used('aws_vpc_default_nacl_used')
@@ -291,5 +308,5 @@ class Tester(interfaces.TesterInterface):
         return result
 
     def detect_vpc_dnc_resolution_enabled(self):
-        return self._check_vpc_dns_resolution_enabled('aws_vpc_default_nacl_used')
+        return self._check_vpc_dns_resolution_enabled('aws_vpc_dnc_resolution_enabled')
 
