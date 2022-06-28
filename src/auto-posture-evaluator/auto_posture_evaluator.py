@@ -75,12 +75,14 @@ class AutoPostureEvaluator:
         self.tests = []
         self.application_name = os.environ.get('APPLICATION_NAME', 'NO_APP_NAME')
         self.subsystem_name = os.environ.get('SUBSYSTEM_NAME', 'NO_SUB_NAME')
-        self.batch_size = 5000
+        self.batch_size = 2000
         self.regions = []
         if not os.environ.get('REGION_LIST'):
             self.regions = ['eu-north-1', 'ap-south-1', 'eu-west-3', 'eu-west-2', 'eu-west-1', 'ap-northeast-3'
-                ,'ap-northeast-2', 'ap-northeast-1', 'sa-east-1', 'ca-central-1', 'ap-southeast-1'
-                , 'ap-southeast-2', 'eu-central-1', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2']
+                ,'ap-northeast-2', 'ap-northeast-1', 'sa-east-1', 'ap-southeast-1'
+                , 'ap-southeast-2', 'eu-central-1', 'us-east-1', 'us-east-2', 'us-west-1'
+                ,'us-west-2','af-south-1','ap-east-1','ca-central-1'
+                ,'eu-south-1','me-south-1','global']
         else:
             self.regions = os.environ.get('REGION_LIST').split(',')
         for tester_module in testers_module_names:
@@ -91,14 +93,13 @@ class AutoPostureEvaluator:
         events_buffer = []
         cur_test_start_timestamp = datetime.datetime.now()
         #print("INFO: Start " + str(cur_tester.declare_tested_service()) + " tester")
-        try:
-            tester_result = cur_tester.run_tests()
-            cur_test_end_timestamp = datetime.datetime.now()
-        except Exception as exTesterException:
-            print("WARN: The tester " + cur_tester.declare_tested_service() + " has crashed with the following exception during 'run_tests()'. SKIPPED: " +
-                str(exTesterException))
-            return
-
+        #try:
+        tester_result = cur_tester.run_tests()
+        cur_test_end_timestamp = datetime.datetime.now()
+        # except Exception as exTesterException:
+        #     print("WARN: The tester " + cur_tester.declare_tested_service() + " has crashed with the following exception during 'run_tests()'. SKIPPED: " +
+        #         str(exTesterException))
+        #     return
         error_template = "The result object from the tester " + cur_tester.declare_tested_service() + \
                          " does not match the required standard"
         if tester_result is None:
@@ -140,11 +141,16 @@ class AutoPostureEvaluator:
         for i in range(0, len(self.tests)):
             tester = self.tests[i]
             for region in self.regions:
-                cur_tester = tester(region)
-                print("INFO:Start tester " + cur_tester.declare_tested_service() +" for region "+region)
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    executor.submit(self.run_single_test, cur_tester, execution_id,loop)
-
+                try:
+                    cur_tester = tester(region)
+                    print("INFO:Start tester " + cur_tester.declare_tested_service() +" for region "+region)
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        executor.submit(self.run_single_test, cur_tester, execution_id,loop)
+                except Exception as exTesterException:
+                    print(
+                        "WARN: The tester " + cur_tester.declare_tested_service() + " has crashed with the following exception during 'run_tests()'. SKIPPED: " +
+                        str(exTesterException))
+                    continue
 
         print("Lambda taken " + str(datetime.datetime.now() - lambda_start_timestamp))
 
