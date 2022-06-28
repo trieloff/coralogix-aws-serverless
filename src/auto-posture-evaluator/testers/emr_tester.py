@@ -7,12 +7,13 @@ from concurrent.futures import ThreadPoolExecutor
 
 class Tester(interfaces.TesterInterface):
     def __init__(self, region_name) -> None:
+        self.aws_region = region_name
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
         self.aws_emr_client = boto3.client('emr', region_name=region_name)
         self.aws_kms_client = boto3.client('kms', region_name=region_name)
-        self.emr_clusters = self._get_all_emr_clusters()
+        self.emr_clusters = []
 
     def declare_tested_provider(self) -> str:
         return "aws"
@@ -21,24 +22,40 @@ class Tester(interfaces.TesterInterface):
         return "emr"
 
     def run_tests(self) -> list:
-        executor_list = []
-        return_values = []
+        all_regions = self._get_all_aws_regions()
 
-        with ThreadPoolExecutor() as executor:
-            executor_list.append(executor.submit(self.emr_cluster_should_have_a_security_configuration))
-            executor_list.append(executor.submit(self.emr_cluster_should_use_kerberos_authentication))
-            executor_list.append(executor.submit(self.emr_in_transit_and_at_rest_encryption_enabled))
-            executor_list.append(executor.submit(self.emr_cluster_should_use_kms_for_s3_sse))
-            executor_list.append(executor.submit(self.emr_cluster_should_upload_logs_to_s3))
-            executor_list.append(executor.submit(self.emr_cluster_should_have_local_disk_encryption))
-            executor_list.append(executor.submit(self.emr_cluster_should_have_encryption_in_transit_enabled))
-            executor_list.append(executor.submit(self.emr_cluster_should_use_kms_for_s3_cse))
-            executor_list.append(executor.submit(self.emr_cluster_encryption_should_be_enabled))
+        if any([self.aws_region == region for region in all_regions]):
+            self.emr_clusters = self._get_all_emr_clusters()
+            executor_list = []
+            return_values = []
 
-            for future in executor_list:
-                return_values.extend(future.result())
+            with ThreadPoolExecutor() as executor:
+                executor_list.append(executor.submit(self.emr_cluster_should_have_a_security_configuration))
+                executor_list.append(executor.submit(self.emr_cluster_should_use_kerberos_authentication))
+                executor_list.append(executor.submit(self.emr_in_transit_and_at_rest_encryption_enabled))
+                executor_list.append(executor.submit(self.emr_cluster_should_use_kms_for_s3_sse))
+                executor_list.append(executor.submit(self.emr_cluster_should_upload_logs_to_s3))
+                executor_list.append(executor.submit(self.emr_cluster_should_have_local_disk_encryption))
+                executor_list.append(executor.submit(self.emr_cluster_should_have_encryption_in_transit_enabled))
+                executor_list.append(executor.submit(self.emr_cluster_should_use_kms_for_s3_cse))
+                executor_list.append(executor.submit(self.emr_cluster_encryption_should_be_enabled))
 
-        return return_values
+                for future in executor_list:
+                    return_values.extend(future.result())
+
+            return return_values
+        else:
+            return None
+
+    def _get_all_aws_regions(self):
+        all_regions = []
+        boto3_client = boto3.client('ec2', region_name='us-east-1')
+        response = boto3_client.describe_regions(AllRegions=True)
+
+        for i in response['Regions']:
+            all_regions.append(i['RegionName'])
+
+        return all_regions
 
     def _get_all_emr_clusters(self):
         clusters = []
@@ -59,7 +76,8 @@ class Tester(interfaces.TesterInterface):
             "item": item,
             "item_type": item_type,
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.aws_region
         }
 
     def emr_cluster_should_have_a_security_configuration(self):
