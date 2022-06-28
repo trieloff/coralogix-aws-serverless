@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 class Tester(interfaces.TesterInterface):
     def __init__(self, region_name) -> None:
+        self.aws_region = region_name
         self.aws_kms_client = boto3.client('kms', region_name=region_name)
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
@@ -20,19 +21,32 @@ class Tester(interfaces.TesterInterface):
         return 'kms'
 
     def run_tests(self) -> list:
-        self.kms_keys = self._get_kms_keys()
+        all_regions = self._get_all_aws_region()
+        if any([self.aws_region == region for region in all_regions]):
+            self.kms_keys = self._get_kms_keys()
+            executor_list = []
+            return_values = []
 
-        executor_list = []
-        return_values = []
+            with ThreadPoolExecutor() as executor:
+                executor_list.append(executor.submit(self.get_rotation_for_cmks_is_enabled, self.kms_keys))
+                executor_list.append(executor.submit(self.get_kms_cmk_pending_deletion, self.kms_keys))
 
-        with ThreadPoolExecutor() as executor:
-            executor_list.append(executor.submit(self.get_rotation_for_cmks_is_enabled, self.kms_keys))
-            executor_list.append(executor.submit(self.get_kms_cmk_pending_deletion, self.kms_keys))
+                for future in executor_list:
+                    return_values.extend(future.result())
 
-            for future in executor_list:
-                return_values.extend(future.result())
+            return return_values
+        else:
+            return None
 
-        return return_values
+    def _get_all_aws_region(self):
+        all_regions = []
+        boto_client = boto3.client('ec2', region_name='us-east-1')
+        response = boto_client.describe_regions(AllRegions=True)
+
+        for r in response['Regions']:
+            all_regions.append(r['RegionName'])
+
+        return all_regions
 
     def _get_result_object(self, item, item_type, test_name, issue_status):
         return {
@@ -43,7 +57,8 @@ class Tester(interfaces.TesterInterface):
             "item": item,
             "item_type": item_type,
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.aws_region
         }
 
     def _get_kms_keys(self):
