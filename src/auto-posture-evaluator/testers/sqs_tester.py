@@ -10,6 +10,8 @@ def _format_string_to_json(text):
 
 class Tester(interfaces.TesterInterface):
     def __init__(self, region_name):
+        self.ssm = boto3.client('ssm')
+        self.region_name = region_name
         self.aws_sqs_client = boto3.client('sqs', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
@@ -23,6 +25,9 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return None
+
         executor_list = []
         return_value = []
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -34,6 +39,15 @@ class Tester(interfaces.TesterInterface):
                 return_value += future.result()
         return return_value
 
+    def _get_regions(self) -> list:
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
+        return region_list
+
     def _append_sqs_test_result(self, sqs_url, test_name, issue_status) -> dict:
         return {
             "user": self.user_id,
@@ -43,7 +57,8 @@ class Tester(interfaces.TesterInterface):
             "item": sqs_url,
             "item_type": "sqs",
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.region_name
         }
 
     def _return_all_the_sqs(self):
@@ -162,7 +177,7 @@ class Tester(interfaces.TesterInterface):
                 policy_dict = _format_string_to_json(response['Attributes']['Policy'])
                 if 'Statement' in policy_dict and policy_dict['Statement']:
                     for statement_dict in policy_dict['Statement']:
-                        if 'Principal' in statement_dict and statement_dict['Principal'] == '*':
+                        if 'Principal' in statement_dict and (statement_dict['Principal'] == '*' or 'AWS' in statement_dict['Principal'] and statement_dict['Principal']['AWS'] == '*'):
                             issue_found = True
                         if issue_found:
                             break
