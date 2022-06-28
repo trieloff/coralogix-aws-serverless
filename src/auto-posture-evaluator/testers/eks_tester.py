@@ -9,13 +9,15 @@ import concurrent.futures
 
 class Tester(interfaces.TesterInterface):
     def __init__(self, region_name):
+        self.ssm = boto3.client('ssm')
+        self.region_name = region_name
         self.aws_eks_client = boto3.client('eks', region_name=region_name)
         self.ec2_vpc_client = boto3.client('ec2', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.eks_cluster = self._return_all_eks_cluster()
+        self.eks_cluster = []
 
     def declare_tested_service(self) -> str:
         return 'eks'
@@ -24,6 +26,9 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return None
+        self.eks_cluster = self._return_all_eks_cluster()
         executor_list = []
         return_value = []
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -43,6 +48,15 @@ class Tester(interfaces.TesterInterface):
             for future in executor_list:
                 return_value += future.result()
         return return_value
+
+    def _get_regions(self) -> list:
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
+        return region_list
 
     def _return_all_eks_cluster(self):
         eks_cluster_response = self.aws_eks_client.list_clusters(
@@ -68,7 +82,8 @@ class Tester(interfaces.TesterInterface):
             "item": eks['name'],
             "item_type": "eks",
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.region_name
         }
 
     def detect_eks_kubernetes_api_server_publicly_accessible(self):
