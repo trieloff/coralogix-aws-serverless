@@ -5,13 +5,14 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 class Tester(interfaces.TesterInterface):
-    def __init__(self, region_name):
-        self.aws_cloudtrail_client = boto3.client('cloudtrail', region_name=region_name)
+    def __init__(self, region_name='global'):
+        self.region_name = region_name
+        self.aws_cloudtrail_client = boto3.client('cloudtrail')
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.all_cloudtrail_details = self._list_all_cloudtrail()
+        self.all_cloudtrail_details = []
 
     def declare_tested_service(self) -> str:
         return 'cloudtrail'
@@ -20,6 +21,10 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
+        if self.region_name != 'global':
+            return None
+        self.all_cloudtrail_details = self._list_all_cloudtrail()
+
         executor_list = []
         return_values = []
 
@@ -55,7 +60,8 @@ class Tester(interfaces.TesterInterface):
             "item": cloudtrail,
             "item_type": "cloudtrail",
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.region_name
         }
 
     def detect_not_encrypted_with_sse_kms(self):
@@ -167,3 +173,4 @@ class Tester(interfaces.TesterInterface):
                                                             test_name,
                                                             'issue_found'))
         return result
+
