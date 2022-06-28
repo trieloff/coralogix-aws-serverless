@@ -85,15 +85,18 @@ class Tester(interfaces.TesterInterface):
 
     def detect_elastic_search_cluster_using_latest_engine_version(self):
         test_name = "aws_elastic_search_cluster_using_latest_engine_version"
+        engine_versions_response = self.aws_elastic_search_client.list_elasticsearch_versions(MaxResults=100)['ElasticsearchVersions']
+        latest_engine_versions=[engine_versions_response[0]]
+        for version in engine_versions_response:
+            if not version.startswith('Open') or version.startswith('open'):
+                latest_engine_versions.append(version)
+                break
         result = []
         for elastic_search in self.elastic_search_domain_names['DomainNames']:
             domain_description = self.aws_elastic_search_client.describe_elasticsearch_domain(
                 DomainName=elastic_search['DomainName'])
             try:
-                if domain_description['DomainStatus']['ServiceSoftwareOptions']['CurrentVersion'] == \
-                        domain_description['DomainStatus']['ServiceSoftwareOptions']['NewVersion'] or (
-                        domain_description['DomainStatus']['ServiceSoftwareOptions']['NewVersion'] == '' and
-                        domain_description['DomainStatus']['ServiceSoftwareOptions']['UpdateAvailable'] == False):
+                if domain_description["ElasticsearchVersion"] in latest_engine_versions:
                     result.append(
                         self._append_elastic_search_test_result(elastic_search, test_name, "no_issue_found"))
                 else:
