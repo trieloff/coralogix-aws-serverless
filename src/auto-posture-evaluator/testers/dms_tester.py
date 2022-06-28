@@ -25,7 +25,7 @@ class Tester(interfaces.TesterInterface):
 
     def run_tests(self) -> list:
         if self.region_name == 'global' or self.region_name not in self._get_regions():
-            return []
+            return None
         self.all_dms_replica_instances = self._return_all_dms_replica_instances()
         executor_list = []
         return_value = []
@@ -41,12 +41,13 @@ class Tester(interfaces.TesterInterface):
                 return_value += future.result()
         return return_value
 
-    def _get_regions(self):
+    def _get_regions(self) -> list:
         region_list = []
         for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
                 Path='/aws/service/global-infrastructure/regions'
         ):
-            region_list.append(p['Value'] for p in page['Parameters'])
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
         return region_list
 
     def _append_dms_test_result(self, dms_data, test_name, issue_status):
