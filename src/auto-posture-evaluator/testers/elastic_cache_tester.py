@@ -14,12 +14,14 @@ def _return_default_port_on_elasticache_engines(cluster_type):
 
 class Tester(interfaces.TesterInterface):
     def __init__(self, region_name):
+        self.ssm = boto3.client('ssm')
+        self.region_name = region_name
         self.aws_elasticache_client = boto3.client('elasticache', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
-        self.elasticache_clusters = self.aws_elasticache_client.describe_cache_clusters(ShowCacheNodeInfo=True)
+        self.elasticache_clusters = []
 
     def declare_tested_service(self) -> str:
         return 'elasticache'
@@ -28,6 +30,10 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return None
+        self.elasticache_clusters = self.aws_elasticache_client.describe_cache_clusters(ShowCacheNodeInfo=True)
+
         executor_list = []
         return_value = []
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -40,6 +46,14 @@ class Tester(interfaces.TesterInterface):
                 return_value += future.result()
         return return_value
 
+    def _get_regions(self) -> list:
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
+        return region_list
 
     def _append_elasticache_test_result(self, elasticache, test_name, issue_status):
         return {
@@ -50,7 +64,8 @@ class Tester(interfaces.TesterInterface):
             "item": elasticache['CacheClusterId'],
             "item_type": "elasticache_cluster",
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.region_name
         }
 
     def _return_latest_version_for_given_engine(self, engine_type):
