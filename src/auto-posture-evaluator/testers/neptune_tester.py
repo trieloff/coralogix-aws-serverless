@@ -6,11 +6,12 @@ import concurrent.futures
 
 class Tester(interfaces.TesterInterface):
     def __init__(self, region_name) -> None:
+        self.aws_region = region_name
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
         self.account_arn = boto3.client('sts').get_caller_identity().get('Arn')
         self.account_id = boto3.client('sts').get_caller_identity().get('Account')
         self.aws_neptune_client = boto3.client('neptune', region_name=region_name)
-        self.db_clusters = self._get_all_neptune_clusters()
+        self.db_clusters = []
 
     def declare_tested_provider(self) -> str:
         return "aws"
@@ -19,23 +20,44 @@ class Tester(interfaces.TesterInterface):
         return "neptune"
 
     def run_tests(self) -> list:
-        executor_list = []
-        return_value = []
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            executor_list.append(executor.submit(self.get_database_encryption_disabled))
-            executor_list.append(executor.submit(self.get_neptune_cluster_audit_logs_disabled))
+        all_regions = self._get_all_aws_regions()
+        if any([self.aws_region == region for region in all_regions]):
+            executor_list = []
+            return_value = []
+            self.db_clusters = self._get_all_neptune_clusters()
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                executor_list.append(executor.submit(self.get_database_encryption_disabled))
+                executor_list.append(executor.submit(self.get_neptune_cluster_audit_logs_disabled))
 
-            for future in executor_list:
-                return_value += future.result()
+                for future in executor_list:
+                    return_value += future.result()
 
-        return return_value
- 
+            return return_value
+        else:
+            return None
+
+    def _get_all_aws_regions(self):
+        all_regions = []
+        boto3_client = boto3.client('ec2', region_name='us-east-1')
+        response = boto3_client.describe_regions(AllRegions=True)
+
+        for i in response['Regions']:
+            all_regions.append(i['RegionName'])
+
+        return all_regions
 
     def _get_all_neptune_clusters(self):
         db_clusters = []
 
         paginator = self.aws_neptune_client.get_paginator('describe_db_clusters')
-        response_iterator = paginator.paginate()
+        response_iterator = paginator.paginate(
+            Filters=[
+                {
+                    'Name': 'engine',
+                    'Values': ['neptune']
+                }
+            ]
+        )
 
         for page in response_iterator:
             db_clusters.extend(page["DBClusters"])
@@ -51,7 +73,8 @@ class Tester(interfaces.TesterInterface):
             "item": item,
             "item_type": item_type,
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.aws_region
         }
 
     def get_database_encryption_disabled(self):
@@ -76,7 +99,6 @@ class Tester(interfaces.TesterInterface):
         test_name = "aws_neptune_cluster_audit_logs_disabled"
 
         db_clusters = self.db_clusters
-
         for instance in db_clusters:
             identifier = instance['DBClusterIdentifier']
             export_logs = instance.get('EnabledCloudwatchLogsExports')
