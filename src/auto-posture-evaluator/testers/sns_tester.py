@@ -29,6 +29,8 @@ def _check_sns_restriction_enabled(access_policy, is_topic):
 
 class Tester(interfaces.TesterInterface):
     def __init__(self, region_name):
+        self.ssm = boto3.client('ssm')
+        self.region_name = region_name
         self.aws_sns_client = boto3.client('sns', region_name=region_name)
         self.cache = {}
         self.user_id = boto3.client('sts').get_caller_identity().get('UserId')
@@ -42,6 +44,8 @@ class Tester(interfaces.TesterInterface):
         return 'aws'
 
     def run_tests(self) -> list:
+        if self.region_name == 'global' or self.region_name not in self._get_regions():
+            return None
         executor_list = []
         return_value = []
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -54,6 +58,15 @@ class Tester(interfaces.TesterInterface):
                 return_value += future.result()
         return return_value
 
+    def _get_regions(self) -> list:
+        region_list = []
+        for page in self.ssm.get_paginator('get_parameters_by_path').paginate(
+                Path='/aws/service/global-infrastructure/regions'
+        ):
+            for p in page['Parameters']:
+                region_list.append(p['Value'])
+        return region_list
+
     def _append_sns_test_result(self, topic_arn, test_name, issue_status):
         return {
             "user": self.user_id,
@@ -63,7 +76,8 @@ class Tester(interfaces.TesterInterface):
             "item": topic_arn,
             "item_type": "sns",
             "test_name": test_name,
-            "test_result": issue_status
+            "test_result": issue_status,
+            "region": self.region_name
         }
 
     def _return_all_the_topic_arns(self):
