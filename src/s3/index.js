@@ -178,7 +178,9 @@ function cloudflare2fastly(cloudflarejson) {
             headers: Object.entries(cloudflarejson.RequestHeaders).reduce((acc, [key, value]) => {
                 acc[key.toLowerCase().replace(/-/g, '_')] = value;
                 return acc;
-            }, {}), // RequestHeaders
+            }, {
+                "user_agent": cloudflarejson.ClientRequestUserAgent, // ClientRequestUserAgent is not in RequestHeaders
+            }), // RequestHeaders
         },
         response: {
             status: cloudflarejson.EdgeResponseStatus, // EdgeResponseStatus
