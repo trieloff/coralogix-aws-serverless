@@ -174,31 +174,31 @@ function cloudflare2fastly(cloudflarejson) {
             host: cloudflarejson.ClientRequestHost, // ClientRequestHost
             url: cloudflarejson.ClientRequestURI, // ClientRequestURI
             protocol: cloudflarejson.ClientRequestProtocol, // ClientRequestProtocol
-            header_size: cloudflarejson.ClientRequestBytes, // ClientRequestBytes
+            size: cloudflarejson.ClientRequestBytes, // ClientRequestBytes
             headers: Object.entries(cloudflarejson.RequestHeaders).reduce((acc, [key, value]) => {
                 acc[key.toLowerCase().replace(/-/g, '_')] = value;
                 return acc;
-            }, {
-                "user_agent": cloudflarejson.ClientRequestUserAgent, // ClientRequestUserAgent is not in RequestHeaders
-            }), // RequestHeaders
+            }, {}), // RequestHeaders
         },
         response: {
             status: cloudflarejson.EdgeResponseStatus, // EdgeResponseStatus
+            size: cloudflarejson.EdgeResponseBytes, // EdgeResponseBytes
             header_size: cloudflarejson.EdgeResponseBytes - cloudflarejson.EdgeResponseBodyBytes, // EdgeResponseBytes
             body_size: cloudflarejson.EdgeResponseBodyBytes, // EdgeResponseBodyBytes
             headers: Object.entries(cloudflarejson.ResponseHeaders).reduce((acc, [key, value]) => {
                 acc[key.toLowerCase().replace(/-/g, '_')] = value;
                 return acc;
-            }, {
-                "content-type": cloudflarejson.EdgeResponseContentType, // EdgeResponseContentType
-            }), // RequestHeaders
+            }, {}), // RequestHeaders
         },
         client: {
             number: cloudflarejson.ClientASN, // ClientASN
+            region_code: cloudflarejson.ClientRegionCode, // ClientRegionCode
+            country_name: cloudflarejson.ClientCountry, // ClientCountry
             ip: cloudflarejson.ClientIP, // ClientIP
         },
         cdn: {
-            service_id: cloudflarejson.ZoneID, // ZoneID
+            zone_name: cloudflarejson.ZoneName, // ZoneName
+            zone_id: cloudflarejson.ZoneID, // ZoneID
             url: new URL(cloudflarejson.ClientRequestURI, cloudflarejson.ClientRequestScheme + "://" + cloudflarejson.ClientRequestHost).href,
             originating_ip: cloudflarejson.RequestHeaders['x-forwarded-for'] ? cloudflarejson.RequestHeaders['x-forwarded-for'].split(',')[0] : cloudflarejson.ClientIP,
             time: {
@@ -207,13 +207,23 @@ function cloudflare2fastly(cloudflarejson) {
                 end: cloudflarejson.EdgeEndTimestamp, // EdgeEndTimestamp
                 end_msec: new Date(cloudflarejson.EdgeEndTimestamp).getTime(),
                 elapsed: cloudflarejson.EdgeTimeToFirstByteMs,
-                worker_cpu_time: cloudflarejson.WorkerCPUTime,
+                worker_cpu_time_us: cloudflarejson.WorkerCPUTime, // WorkerCPUTime
+                worker_wall_time_us: cloudflarejson.WorkerWallTimeUs, // WorkerWallTimeUs
             },
             is_edge: cloudflarejson.ClientRequestSource === 'eyeball',
-            datacenter: cloudflarejson.EdgeColoCode, // EdgeColoCode
-            hostname: "cloudflare-" + cloudflarejson.EdgeColoCode.toLowerCase() + "-" + cloudflarejson.EdgeColoID,
+            request_source: cloudflarejson.ClientRequestSource, // WorkerWallTimeUs
+            worker: {
+                subrequest: cloudflarejson.WorkerSubrequest, // WorkerSubrequest
+                subrequest_count: cloudflarejson.WorkerSubrequestCount, // WorkerSubrequestCount
+                status: cloudflarejson.WorkerStatus, // WorkerStatus
+            }, 
+            colo_code: cloudflarejson.EdgeColoCode, // EdgeColoCode
+            colo_id: cloudflarejson.EdgeColoID, // EdgeColoID
             ip: cloudflarejson.EdgeServerIP, // EdgeServerIP
             cache_status: cloudflarejson.CacheCacheStatus, // CacheCacheStatus
+            cache_tier_fill: cloudflarejson.CacheTieredFill, // CacheTieredFill
+            smart_route_colo_id: cloudflarejson.SmartRouteColoID, // SmartRouteColoID
+            upper_tier_colo_id: cloudflarejson.UpperTierColoID, // UpperTierColoID
         }
     };
 }
