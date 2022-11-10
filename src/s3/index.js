@@ -185,6 +185,7 @@ function cloudflare2fastly(cloudflarejson) {
             size: cloudflarejson.EdgeResponseBytes, // EdgeResponseBytes
             header_size: cloudflarejson.EdgeResponseBytes - cloudflarejson.EdgeResponseBodyBytes, // EdgeResponseBytes
             body_size: cloudflarejson.EdgeResponseBodyBytes, // EdgeResponseBodyBytes
+            compression_ratio: cloudflarejson.EdgeResponseCompressionRatio, // EdgeResponseCompressionRatio
             headers: Object.entries(cloudflarejson.ResponseHeaders).reduce((acc, [key, value]) => {
                 acc[key.toLowerCase().replace(/-/g, '_')] = value;
                 return acc;
@@ -199,6 +200,7 @@ function cloudflare2fastly(cloudflarejson) {
         cdn: {
             zone_name: cloudflarejson.ZoneName, // ZoneName
             zone_id: cloudflarejson.ZoneID, // ZoneID
+            ray_id: cloudflarejson.RayID, // RayID
             url: new URL(cloudflarejson.ClientRequestURI, cloudflarejson.ClientRequestScheme + "://" + cloudflarejson.ClientRequestHost).href,
             originating_ip: cloudflarejson.RequestHeaders['x-forwarded-for'] ? cloudflarejson.RequestHeaders['x-forwarded-for'].split(',')[0] : cloudflarejson.ClientIP,
             time: {
@@ -210,7 +212,7 @@ function cloudflare2fastly(cloudflarejson) {
                 worker_cpu_time_us: cloudflarejson.WorkerCPUTime, // WorkerCPUTime
                 worker_wall_time_us: cloudflarejson.WorkerWallTimeUs, // WorkerWallTimeUs
             },
-            is_edge: cloudflarejson.ClientRequestSource === 'eyeball',
+            is_edge: cloudflarejson.ClientRequestSource === 'eyeball', // ClientRequestSource
             request_source: cloudflarejson.ClientRequestSource, // WorkerWallTimeUs
             worker: {
                 subrequest: cloudflarejson.WorkerSubrequest, // WorkerSubrequest
