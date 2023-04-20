@@ -182,10 +182,7 @@ function cloudflare2fastly(cloudflarejson) {
         },
         response: {
             status: cloudflarejson.EdgeResponseStatus, // EdgeResponseStatus
-            size: cloudflarejson.EdgeResponseBytes, // EdgeResponseBytes
-            header_size: cloudflarejson.EdgeResponseBytes - cloudflarejson.EdgeResponseBodyBytes, // EdgeResponseBytes
             body_size: cloudflarejson.EdgeResponseBodyBytes, // EdgeResponseBodyBytes
-            compression_ratio: cloudflarejson.EdgeResponseCompressionRatio, // EdgeResponseCompressionRatio
             headers: Object.entries(cloudflarejson.ResponseHeaders).reduce((acc, [key, value]) => {
                 acc[key.toLowerCase().replace(/-/g, '_')] = value;
                 return acc;
@@ -199,14 +196,10 @@ function cloudflare2fastly(cloudflarejson) {
         },
         cdn: {
             zone_name: cloudflarejson.ZoneName, // ZoneName
-            zone_id: cloudflarejson.ZoneID, // ZoneID
-            ray_id: cloudflarejson.RayID, // RayID
             url: new URL(cloudflarejson.ClientRequestURI, cloudflarejson.ClientRequestScheme + "://" + cloudflarejson.ClientRequestHost).href,
             originating_ip: cloudflarejson.RequestHeaders['x-forwarded-for'] ? cloudflarejson.RequestHeaders['x-forwarded-for'].split(',')[0] : cloudflarejson.ClientIP,
             time: {
-                start: cloudflarejson.EdgeStartTimestamp, // EdgeStartTimestamp
                 start_msec: new Date(cloudflarejson.EdgeStartTimestamp).getTime(),
-                end: cloudflarejson.EdgeEndTimestamp, // EdgeEndTimestamp
                 end_msec: new Date(cloudflarejson.EdgeEndTimestamp).getTime(),
                 elapsed: cloudflarejson.EdgeTimeToFirstByteMs,
                 worker_cpu_time_us: cloudflarejson.WorkerCPUTime, // WorkerCPUTime
@@ -220,12 +213,7 @@ function cloudflare2fastly(cloudflarejson) {
                 status: cloudflarejson.WorkerStatus, // WorkerStatus
             }, 
             colo_code: cloudflarejson.EdgeColoCode, // EdgeColoCode
-            colo_id: cloudflarejson.EdgeColoID, // EdgeColoID
-            ip: cloudflarejson.EdgeServerIP, // EdgeServerIP
             cache_status: cloudflarejson.CacheCacheStatus, // CacheCacheStatus
-            cache_tier_fill: cloudflarejson.CacheTieredFill, // CacheTieredFill
-            smart_route_colo_id: cloudflarejson.SmartRouteColoID, // SmartRouteColoID
-            upper_tier_colo_id: cloudflarejson.UpperTierColoID, // UpperTierColoID
         }
     };
 }
